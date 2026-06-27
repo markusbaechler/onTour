@@ -31,6 +31,11 @@ export type Op =
   | { op: 'removeReaction'; photoId: string; author: string; emoji: string }
   | { op: 'setLocation'; rider: string; lat: number; lng: number; accuracy?: number; speed?: number; heading?: number }
 
+/** Schreibt einen Startbestand lokal (Demo), damit der erste Op ihn nicht verdraengt. */
+export function primeLocalData(data: DataStore) {
+  if (!dataApiReady) writeLS(LS_DATA, data)
+}
+
 export async function loadData(): Promise<DataStore> {
   if (!dataApiReady) return readLS(LS_DATA, emptyData)
   try {

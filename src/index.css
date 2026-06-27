@@ -170,3 +170,28 @@ input[type="file"] { display: none; }
 .grid-photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; background: var(--ink-2); }
 
 .empty { text-align: center; padding: 40px 16px; color: var(--mist); }
+
+/* Fotobuch 2.0 – variables Mosaik (dynamische Kachelgroessen, dichter Fluss) */
+.mosaic { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 23vw; grid-auto-flow: dense; gap: 4px; }
+@media (min-width: 480px) { .mosaic { grid-auto-rows: 108px; } }
+.mosaic > * { position: relative; overflow: hidden; border-radius: 8px; cursor: pointer; background: var(--ink-2); }
+.mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s ease; }
+.mosaic > *:active img { transform: scale(1.04); }
+.mosaic .t-big { grid-column: span 2; grid-row: span 2; }
+.mosaic .t-wide { grid-column: span 2; }
+.mosaic .t-tall { grid-row: span 2; }
+
+/* Story: Foto-Wechsel nur ueber transform/opacity */
+.fade-swap { animation: fadeSwap .24s ease; }
+@keyframes fadeSwap { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+
+/* Story-Ringe oben */
+.story-ring { padding: 2px; border-radius: 50%; background: linear-gradient(135deg, var(--signal), var(--glacier)); }
+.story-ring.seen { background: var(--slate-strong); }
+.story-ring > img { display: block; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--ink); background: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-swap { animation: none; }
+  .mosaic img { transition: none; }
+  .mosaic > *:active img { transform: none; }
+}

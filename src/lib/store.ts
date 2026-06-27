@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
-import { dataApiReady, loadData, loadLive, sendOp, type DataStore, type LiveStore } from './dataApi'
+import { dataApiReady, loadData, loadLive, primeLocalData, sendOp, type DataStore, type LiveStore } from './dataApi'
 
 const LIVE_POLL_MS = 45_000 // Betrachter pollen alle ~45 s
 const FRESH_MS = 15 * 60_000 // < 15 Min = "live"
@@ -43,6 +43,7 @@ export function useStore() {
     loadData().then((d) => {
       if (!active) return
       const seeded = !dataApiReady && d.actuals.length === 0 && d.photos.length === 0
+      if (seeded) primeLocalData(demoSeed) // Seed lokal sichern, sonst loescht ihn der erste Op
       setData(seeded ? demoSeed : d)
       setLoading(false)
     })
