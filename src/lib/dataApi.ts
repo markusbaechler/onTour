@@ -54,7 +54,9 @@ export async function loadLive(): Promise<LiveStore> {
 
 export async function sendOp(op: Op): Promise<void> {
   if (dataApiReady) {
-    await fetch(API!, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(op) })
+    // Wirft bei Netz- oder HTTP-Fehler -> die Outbox kann erneut versuchen.
+    const res = await fetch(API!, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(op) })
+    if (!res.ok) throw new Error(`sendOp ${res.status}`)
     return
   }
   // Demo-Fallback: Operation lokal anwenden (spiegelt die Server-Merge-Logik)

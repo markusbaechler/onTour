@@ -6,6 +6,7 @@ import { SollIst } from './views/SollIst'
 import { Photobook } from './views/Photobook'
 import { Live } from './views/Live'
 import { IdentityPicker } from './components/IdentityPicker'
+import { OfflineBanner } from './components/OfflineBanner'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare } from './lib/geo'
@@ -36,6 +37,7 @@ export default function App() {
 
   return (
     <div className="shell">
+      <OfflineBanner />
       {tab === 'overview' && <Overview actuals={store.actuals} stats={stageStats} onOpenStage={openStageInStages} viewerName={viewer.name} onChangeName={viewer.setName} />}
       {tab === 'stages' && <Stages actuals={store.actuals} stats={stageStats} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
       {tab === 'sollist' && <SollIst actuals={store.actuals} onUpsert={store.upsertActual} />}
@@ -46,6 +48,7 @@ export default function App() {
           reactions={store.reactions}
           viewerName={viewer.name}
           onAdd={store.addPhoto}
+          onAddLocal={store.addPhotoLocal}
           onRemove={store.removePhoto}
           onAddComment={store.addComment}
           onToggleReaction={store.toggleReaction}

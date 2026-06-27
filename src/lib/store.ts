@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
-import { dataApiReady, loadData, loadLive, primeLocalData, sendOp, type DataStore, type LiveStore } from './dataApi'
+import { dataApiReady, loadData, loadLive, primeLocalData, type DataStore, type LiveStore, type Op } from './dataApi'
+import { dispatch } from './outbox'
 
 const LIVE_POLL_MS = 45_000 // Betrachter pollen alle ~45 s
 const FRESH_MS = 15 * 60_000 // < 15 Min = "live"
@@ -38,10 +39,10 @@ export function useStore() {
     return () => { active = false; clearInterval(t) }
   }, [])
 
-  // Optimistisches Update + Operation an den Server
-  const apply = useCallback((next: DataStore, op: Parameters<typeof sendOp>[0]) => {
+  // Optimistisches Update + Operation ueber die Outbox (Offline-Puffer + Retry)
+  const apply = useCallback((next: DataStore, op: Op) => {
     setData(next)
-    void sendOp(op)
+    dispatch(op)
   }, [])
 
   const upsertActual = useCallback((a: Actual) => {
@@ -53,6 +54,11 @@ export function useStore() {
   const addPhoto = useCallback((p: Photo) => {
     apply({ ...dataRef.current, photos: [p, ...dataRef.current.photos] }, { op: 'addPhoto', photo: p })
   }, [apply])
+
+  // Optimistisch lokal einfuegen ohne Op (Foto wird offline gepuffert, Upload+Op via Outbox)
+  const addPhotoLocal = useCallback((p: Photo) => {
+    setData((prev) => ({ ...prev, photos: [p, ...prev.photos] }))
+  }, [])
 
   const removePhoto = useCallback((id: string) => {
     const d = dataRef.current
@@ -76,8 +82,8 @@ export function useStore() {
 
   const setLocation = useCallback((loc: Omit<RiderLocation, 'at'>) => {
     setLive((l) => ({ ...l, [loc.rider]: { ...loc, at: new Date().toISOString() } }))
-    void sendOp({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
+    dispatch({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
   }, [])
 
-  return { ...data, live, loading, upsertActual, addPhoto, removePhoto, addComment, toggleReaction, setLocation }
+  return { ...data, live, loading, upsertActual, addPhoto, addPhotoLocal, removePhoto, addComment, toggleReaction, setLocation }
 }

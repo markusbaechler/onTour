@@ -14,6 +14,7 @@ interface Props {
   reactions: Reaction[]
   viewerName: string
   onAdd: (p: Photo) => void
+  onAddLocal: (p: Photo) => void
   onRemove: (id: string) => void
   onAddComment: (c: Comment) => void
   onToggleReaction: (photoId: string, author: string, emoji: string) => void
@@ -31,7 +32,7 @@ function tileClass(i: number): string {
 
 export function Photobook({
   photos, comments, reactions, viewerName,
-  onAdd, onRemove, onAddComment, onToggleReaction, onChangeName,
+  onAdd, onAddLocal, onRemove, onAddComment, onToggleReaction, onChangeName,
 }: Props) {
   const [storyStart, setStoryStart] = useState<string | null>(null)
   const [mode, setMode] = useState<'mosaic' | 'map'>('mosaic')
@@ -88,7 +89,7 @@ export function Photobook({
               </div>
 
               <div style={{ marginBottom: 10 }}>
-                <PhotoUpload stageId={s.id} author={viewerName} onAdd={onAdd} />
+                <PhotoUpload stageId={s.id} author={viewerName} onAdd={onAdd} onAddLocal={onAddLocal} />
               </div>
 
               {ps.length === 0 ? (

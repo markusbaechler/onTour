@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { uploadPhoto, cloudinaryReady } from '../lib/cloudinary'
+import { queuePhoto } from '../lib/outbox'
 import type { Photo } from '../types'
 import { IcCamera } from './Icons'
 import { Avatar } from './Avatar'
@@ -9,9 +10,11 @@ interface Props {
   /** Gemerkte Identitaet = Foto-Autor (kein Dropdown mehr). */
   author: string
   onAdd: (p: Photo) => void
+  /** Optimistisch lokal einfuegen, wenn offline gepuffert wird. */
+  onAddLocal: (p: Photo) => void
 }
 
-export function PhotoUpload({ stageId, author, onAdd }: Props) {
+export function PhotoUpload({ stageId, author, onAdd, onAddLocal }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [count, setCount] = useState(0)
@@ -21,20 +24,16 @@ export function PhotoUpload({ stageId, author, onAdd }: Props) {
     setBusy(true)
     setCount(files.length)
     for (const file of Array.from(files)) {
+      const id = crypto.randomUUID()
+      const createdAt = new Date().toISOString()
       try {
         const r = await uploadPhoto(file)
-        onAdd({
-          id: crypto.randomUUID(),
-          stageId,
-          url: r.url,
-          thumbUrl: r.thumbUrl,
-          author,
-          createdAt: new Date().toISOString(),
-          lat: r.lat,
-          lng: r.lng,
-        })
+        onAdd({ id, stageId, url: r.url, thumbUrl: r.thumbUrl, author, createdAt, lat: r.lat, lng: r.lng })
       } catch {
-        /* einzelner Upload fehlgeschlagen – Rest weiterlaufen lassen */
+        // scharf + offline: lokal anzeigen, Datei puffern, Upload+Op spaeter via Outbox
+        const local = URL.createObjectURL(file)
+        onAddLocal({ id, stageId, url: local, thumbUrl: local, author, createdAt })
+        await queuePhoto(file, { id, stageId, author, createdAt })
       }
     }
     setBusy(false)
