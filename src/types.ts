@@ -69,6 +69,29 @@ export interface Comment {
   createdAt: string
 }
 
+/** Manoever-Typ eines Cues (an Beeline/Valhalla angelehnt). */
+export type CueType =
+  | 'depart' | 'arrive'
+  | 'left' | 'right'
+  | 'slight-left' | 'slight-right'
+  | 'sharp-left' | 'sharp-right'
+  | 'straight' | 'uturn'
+  | 'keep-left' | 'keep-right'
+  | 'roundabout'
+
+/**
+ * Vorberechneter Navigationshinweis (Cue Sheet). Pro Roadbook eine Liste in
+ * public/roadbooks/t{N}.cues.json. On-Bike wird nur abgespielt, nicht neu geroutet.
+ */
+export interface Cue {
+  at: LatLng // Position des Manoevers
+  type: CueType
+  exit?: number // Kreisel-Ausfahrt
+  text: string // Anweisung, z. B. "3. Ausfahrt"
+  street?: string // Zielstrasse, z. B. "D902 -> Galibier"
+  distFromStart: number // Meter ab Start entlang der Route
+}
+
 /** Letzter bekannter Standort eines Fahrers ("last seen", kein Hintergrund-GPS) */
 export interface RiderLocation {
   rider: string

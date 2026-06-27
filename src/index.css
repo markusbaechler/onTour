@@ -150,7 +150,10 @@ button.row:active { transform: scale(0.995); }
 .btn:disabled { opacity: .5; }
 
 /* Leaflet-Anpassung an Dark-Theme */
-.leaflet-container { background: var(--ink-2); font-family: var(--font-body); }
+/* isolate: haelt Leaflet-Panes/Controls (z-index bis 1000) im eigenen Stacking-
+   Context, sonst lecken sie in den Root und liegen ueber Overlays (Lightbox,
+   NamePrompt, Navigation). */
+.leaflet-container { background: var(--ink-2); font-family: var(--font-body); isolation: isolate; }
 .leaflet-control-attribution { background: rgba(14,13,17,.7) !important; color: var(--mist) !important; }
 .leaflet-control-attribution a { color: var(--mist) !important; }
 .leaflet-bar a { background: var(--ink-raised); color: var(--snow); border-color: var(--slate) !important; }

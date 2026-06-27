@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { trip } from '../data/trip'
 import { ColBadge } from '../components/ColBadge'
 import { MapView } from '../components/MapView'
-import { IcDownload, IcUpload } from '../components/Icons'
+import { IcDownload, IcUpload, IcRoute } from '../components/Icons'
+import { Navigation } from './Navigation'
 import { km, hm, stageDate } from '../lib/format'
 import { parseGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
-import type { Actual, LatLng } from '../types'
+import type { Actual, LatLng, Stage } from '../types'
 
 interface Props {
   actuals: Actual[]
@@ -18,6 +19,7 @@ interface Props {
 export function Stages({ actuals, openStage, onUpsert, base }: Props) {
   const [open, setOpen] = useState<string | undefined>(openStage ?? trip.stages[0].id)
   const [tracks, setTracks] = useState<Record<string, LatLng[]>>({})
+  const [navStage, setNavStage] = useState<Stage | null>(null)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
@@ -73,6 +75,10 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
                     {s.cols.map((c) => <ColBadge key={c.name} col={c} />)}
                   </div>
 
+                  <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setNavStage(s)}>
+                    <IcRoute size={18} /> Navigation starten
+                  </button>
+
                   <div style={{ display: 'flex', gap: 8 }}>
                     <a className="btn ghost" href={`${base}${s.gpxUrl}`} download style={{ flex: 1, textDecoration: 'none' }}>
                       <IcDownload size={18} /> Roadbook
@@ -85,6 +91,8 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
           )
         })}
       </div>
+
+      {navStage && <Navigation stage={navStage} base={base} onClose={() => setNavStage(null)} />}
     </div>
   )
 }
