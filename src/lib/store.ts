@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
 import { dataApiReady, loadData, loadLive, primeLocalData, type DataStore, type LiveStore, type Op } from './dataApi'
-import { dispatch } from './outbox'
+import { dispatch, onOutboxDrop } from './outbox'
+import { toast } from './toast'
 
 const LIVE_POLL_MS = 45_000 // Betrachter pollen alle ~45 s
 const FRESH_MS = 15 * 60_000 // < 15 Min = "live"
@@ -37,6 +38,34 @@ export function useStore() {
     pollLive()
     const t = setInterval(pollLive, LIVE_POLL_MS)
     return () => { active = false; clearInterval(t) }
+  }, [])
+
+  // Endgueltig fehlgeschlagene Outbox-Eintraege: optimistische Aenderung zuruecknehmen + Fehler-Toast.
+  useEffect(() => {
+    onOutboxDrop((item) => {
+      if (item.kind === 'photo') {
+        setData((p) => ({ ...p, photos: p.photos.filter((x) => x.id !== item.meta.id) }))
+        toast.error('Foto konnte nicht gesendet werden')
+        return
+      }
+      const op = item.op
+      switch (op.op) {
+        case 'addComment':
+          setData((p) => ({ ...p, comments: p.comments.filter((c) => c.id !== op.comment.id) }))
+          toast.error('Kommentar konnte nicht gesendet werden'); break
+        case 'addPhoto':
+          setData((p) => ({ ...p, photos: p.photos.filter((x) => x.id !== op.photo.id) }))
+          toast.error('Foto konnte nicht gesendet werden'); break
+        case 'addReaction':
+          setData((p) => ({ ...p, reactions: p.reactions.filter((r) => !(r.photoId === op.reaction.photoId && r.author === op.reaction.author && r.emoji === op.reaction.emoji)) }))
+          toast.error('Reaktion konnte nicht gesendet werden'); break
+        case 'removeReaction':
+          setData((p) => ({ ...p, reactions: [...p.reactions, { photoId: op.photoId, author: op.author, emoji: op.emoji, createdAt: new Date().toISOString() }] }))
+          toast.error('Reaktion konnte nicht entfernt werden'); break
+        default:
+          toast.error('Aktion konnte nicht gesendet werden')
+      }
+    })
   }, [])
 
   // Optimistisches Update + Operation ueber die Outbox (Offline-Puffer + Retry)

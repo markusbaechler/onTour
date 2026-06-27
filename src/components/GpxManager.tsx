@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { uploadGpx } from '../lib/cloudinary'
 import { loadGpxDetailed, parseGpxDetailed, removeLocalGpx, type GpxDetail } from '../lib/gpx'
+import { toast } from '../lib/toast'
 import { km as fmtKm, hm as fmtHm } from '../lib/format'
 import { IcDownload, IcExternal, IcUpload, IcX } from './Icons'
 import type { Actual, Stage } from '../types'
@@ -50,6 +51,9 @@ export function GpxManager({ stage, actual, base, istLocked, istLockHint, onUpse
     try {
       removeLocalGpx(actual?.planTrackUrl)
       write({ planTrackUrl: await uploadGpx(file, `${stage.id}-plan`) })
+      toast.success('Roadbook ersetzt')
+    } catch {
+      toast.error('Roadbook-Upload fehlgeschlagen')
     } finally { setBusy(null) }
   }
   function resetPlan() {
@@ -64,6 +68,9 @@ export function GpxManager({ stage, actual, base, istLocked, istLockHint, onUpse
       removeLocalGpx(actual?.trackUrl)
       const url = await uploadGpx(file, `${stage.id}-ist`)
       write({ ridden: true, trackUrl: url, actualKm: d.km || actual?.actualKm, actualAscent: d.ascent || actual?.actualAscent })
+      toast.success('Gefahren-GPX gespeichert')
+    } catch {
+      toast.error('GPX-Upload fehlgeschlagen')
     } finally { setBusy(null) }
   }
   function removeIst() {

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { uploadPhoto, cloudinaryReady } from '../lib/cloudinary'
 import { queuePhoto } from '../lib/outbox'
+import { toast } from '../lib/toast'
 import type { Photo } from '../types'
 import { IcCamera } from './Icons'
 import { Avatar } from './Avatar'
@@ -23,19 +24,25 @@ export function PhotoUpload({ stageId, author, onAdd, onAddLocal }: Props) {
     if (!files?.length) return
     setBusy(true)
     setCount(files.length)
+    let added = 0
+    let buffered = 0
     for (const file of Array.from(files)) {
       const id = crypto.randomUUID()
       const createdAt = new Date().toISOString()
       try {
         const r = await uploadPhoto(file)
         onAdd({ id, stageId, url: r.url, thumbUrl: r.thumbUrl, author, createdAt, lat: r.lat, lng: r.lng })
+        added++
       } catch {
         // scharf + offline: lokal anzeigen, Datei puffern, Upload+Op spaeter via Outbox
         const local = URL.createObjectURL(file)
         onAddLocal({ id, stageId, url: local, thumbUrl: local, author, createdAt })
         await queuePhoto(file, { id, stageId, author, createdAt })
+        buffered++
       }
     }
+    if (added) toast.success(`${added} Foto${added > 1 ? 's' : ''} hinzugefügt`)
+    if (buffered) toast.info(`${buffered} Foto${buffered > 1 ? 's' : ''} offline gepuffert – sendet bei Verbindung`)
     setBusy(false)
     setCount(0)
     if (input.current) input.current.value = ''

@@ -181,6 +181,10 @@ input[type="file"] { display: none; }
 .mosaic .t-wide { grid-column: span 2; }
 .mosaic .t-tall { grid-row: span 2; }
 
+/* Toasts (Aktions-Feedback) */
+.toast { animation: toastIn .2s ease; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
 /* Story: Foto-Wechsel nur ueber transform/opacity */
 .fade-swap { animation: fadeSwap .24s ease; }
 @keyframes fadeSwap { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
@@ -192,6 +196,7 @@ input[type="file"] { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .fade-swap { animation: none; }
+  .toast { animation: none; }
   .mosaic img { transition: none; }
   .mosaic > *:active img { transform: none; }
 }

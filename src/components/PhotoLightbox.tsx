@@ -5,6 +5,8 @@ import type { Comment, Photo, Reaction } from '../types'
 import { Avatar } from './Avatar'
 import { IdentityPicker } from './IdentityPicker'
 import { IcMoodPlus, IcSend, IcSmile, IcX } from './Icons'
+import { dataApiReady } from '../lib/dataApi'
+import { toast } from '../lib/toast'
 
 const REACTIONS = ['❤️', '🔥', '😮', '😍', '👏', '😂', '🙏', '💪']
 
@@ -88,6 +90,8 @@ export function PhotoLightbox({
     onAddComment({ id: crypto.randomUUID(), photoId: photo.id, author: viewerName, text: body, createdAt: new Date().toISOString() })
     setText('')
     setEmojiBar(false)
+    if (dataApiReady && !navigator.onLine) toast.info('Kommentar gepuffert – sendet bei Verbindung')
+    else toast.success('Kommentar gepostet')
   }
 
   return (

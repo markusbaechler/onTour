@@ -7,6 +7,7 @@ import { Photobook } from './views/Photobook'
 import { Live } from './views/Live'
 import { IdentityPicker } from './components/IdentityPicker'
 import { OfflineBanner } from './components/OfflineBanner'
+import { Toaster } from './components/Toaster'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare } from './lib/geo'
@@ -67,6 +68,7 @@ export default function App() {
         />
       )}
       <Nav tab={tab} onChange={(t) => { setOpenStage(undefined); setTab(t) }} />
+      <Toaster />
     </div>
   )
 }

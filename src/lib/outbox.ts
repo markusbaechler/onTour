@@ -12,9 +12,15 @@ const DB_NAME = 'alpes-outbox'
 const STORE = 'blobs'
 
 interface PhotoMeta { id: string; stageId: string; author: string; caption?: string; createdAt: string }
-type Item =
+export type OutboxItem =
   | { id: string; kind: 'op'; op: Op; attempts: number }
   | { id: string; kind: 'photo'; blobId: string; meta: PhotoMeta; attempts: number }
+type Item = OutboxItem
+
+const MAX_ATTEMPTS = 5
+let dropHandler: ((item: OutboxItem) => void) | null = null
+/** Wird aufgerufen, wenn ein Eintrag endgueltig verworfen wird (fuer Rollback + Toast). */
+export function onOutboxDrop(fn: (item: OutboxItem) => void) { dropHandler = fn }
 
 function loadQueue(): Item[] {
   try { return JSON.parse(localStorage.getItem(OPS_KEY) ?? '[]') } catch { return [] }
@@ -87,7 +93,15 @@ export async function flush() {
         }
         queue.shift(); persist(); notify()
       } catch {
-        item.attempts++; persist(); notify()
+        item.attempts++
+        if (item.attempts >= MAX_ATTEMPTS) {
+          const dropped = queue.shift()!
+          if (dropped.kind === 'photo') void delBlob(dropped.blobId)
+          persist(); notify()
+          dropHandler?.(dropped) // Rollback + Fehler-Toast
+          continue // naechsten Eintrag versuchen
+        }
+        persist(); notify()
         break // Reihenfolge erhalten – spaeter erneut versuchen
       }
     }

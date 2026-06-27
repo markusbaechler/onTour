@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { LiveMap } from '../components/LiveMap'
 import { IdentityPicker } from '../components/IdentityPicker'
 import { IcPin } from '../components/Icons'
+import { toast } from '../lib/toast'
 import { clock, timeAgo } from '../lib/format'
 import { isFresh } from '../lib/store'
 import { avatarInitial } from '../lib/viewer'
@@ -27,9 +28,11 @@ export function Live({ live, viewerName, sharing, geoError, onStartShare, onStop
   )
   const route = useMemo<LatLng[]>(() => trip.stages.flatMap((s) => s.track ?? [s.start, s.end]), [])
 
+  useEffect(() => { if (geoError) toast.error(geoError) }, [geoError])
+
   function toggle() {
-    if (sharing) onStopShare()
-    else onStartShare(viewerName)
+    if (sharing) { onStopShare(); toast.info('Standort-Teilen beendet') }
+    else { onStartShare(viewerName); toast.success('Standort wird geteilt') }
   }
 
   return (
