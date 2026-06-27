@@ -5,6 +5,7 @@ import { ColBadge } from '../components/ColBadge'
 import { IcX } from '../components/Icons'
 import { km as fmtKm } from '../lib/format'
 import { bearing, cueText, cumulative, distanceM, loadCues, navDistance, projectOnTrack } from '../lib/nav'
+import type { Pass } from '../lib/passes'
 import type { Cue, CueType, LatLng, Stage } from '../types'
 
 type RideMode = 'gps' | 'sim'
@@ -93,11 +94,12 @@ const SMALL_LABEL: Partial<Record<CueType, string>> = {
 
 interface Props {
   stage: Stage
+  passes: Pass[]
   base: string
   onClose: () => void
 }
 
-export function Navigation({ stage, base, onClose }: Props) {
+export function Navigation({ stage, passes, base, onClose }: Props) {
   const [data, setData] = useState<{ cues: Cue[]; track: LatLng[]; source: 'precomputed' | 'heuristic' } | null>(null)
   const [mode, setMode] = useState<RideMode>('gps')
   useWakeLock()
@@ -123,7 +125,7 @@ export function Navigation({ stage, base, onClose }: Props) {
   const after = nextIdx >= 0 ? cues[nextIdx + 1] : undefined
   const distToNext = next ? Math.max(0, next.distFromStart - distAlong) : 0
   const progress = total ? Math.min(1, distAlong / total) : 0
-  const nextCol = stage.cols.find((_, j) => (j + 1) / (stage.cols.length + 1) > progress)
+  const nextCol = passes.find((p) => p.distFromStart > distAlong)
 
   const [num, unit] = navDistance(distToNext).split(' ')
   const dest = stage.end

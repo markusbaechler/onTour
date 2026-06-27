@@ -9,6 +9,7 @@ import { IdentityPicker } from './components/IdentityPicker'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare } from './lib/geo'
+import { useStageStats } from './lib/passes'
 import { trip } from './data/trip'
 
 const PASSWORD = import.meta.env.VITE_TRIP_PASSWORD
@@ -21,6 +22,7 @@ export default function App() {
   const viewer = useViewer()
   const geo = useGeoShare(store.setLocation)
   const base = import.meta.env.BASE_URL
+  const stageStats = useStageStats(base)
 
   if (!unlocked) return <Gate onUnlock={() => setUnlocked(true)} />
 
@@ -34,8 +36,8 @@ export default function App() {
 
   return (
     <div className="shell">
-      {tab === 'overview' && <Overview actuals={store.actuals} onOpenStage={openStageInStages} viewerName={viewer.name} onChangeName={viewer.setName} />}
-      {tab === 'stages' && <Stages actuals={store.actuals} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
+      {tab === 'overview' && <Overview actuals={store.actuals} stats={stageStats} onOpenStage={openStageInStages} viewerName={viewer.name} onChangeName={viewer.setName} />}
+      {tab === 'stages' && <Stages actuals={store.actuals} stats={stageStats} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
       {tab === 'sollist' && <SollIst actuals={store.actuals} onUpsert={store.upsertActual} />}
       {tab === 'photos' && (
         <Photobook

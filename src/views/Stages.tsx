@@ -9,6 +9,7 @@ import { Navigation } from './Navigation'
 import { km, hm, stageDate } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
+import type { StageStats } from '../lib/passes'
 import type { Actual, LatLng, Stage } from '../types'
 
 /** Laedt gefahrene Tracks (Actual.trackUrl) fuer die Kartenlinie; reagiert auf Aenderungen. */
@@ -28,12 +29,13 @@ function useRiddenTracks(actuals: Actual[]): Record<string, LatLng[]> {
 
 interface Props {
   actuals: Actual[]
+  stats: Record<string, StageStats>
   openStage?: string
   onUpsert: (a: Actual) => void
   base: string
 }
 
-export function Stages({ actuals, openStage, onUpsert, base }: Props) {
+export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [open, setOpen] = useState<string | undefined>(openStage ?? trip.stages[0].id)
   const [navStage, setNavStage] = useState<Stage | null>(null)
   const [gpxStage, setGpxStage] = useState<Stage | null>(null)
@@ -55,7 +57,11 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
   return (
     <div className="view">
       <span className="eyebrow">Etappen · Soll</span>
-      <h1 className="h1" style={{ marginTop: 8, marginBottom: 16 }}>7 Tage, {trip.stages.reduce((s, x) => s + x.cols.length, 0)} Cols</h1>
+      <h1 className="h1" style={{ marginTop: 8, marginBottom: 16 }}>
+        {trip.stages.length} Tage, {trip.stages.every((s) => stats[s.id])
+          ? trip.stages.reduce((a, s) => a + stats[s.id].passes.length, 0)
+          : trip.stages.reduce((s, x) => s + x.cols.length, 0)} Pässe
+      </h1>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {trip.stages.map((s) => {
@@ -71,7 +77,7 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
                 <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 12 }}>T{s.day}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>{s.from} → {s.to}</div>
-                  <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>{stageDate(trip.startDate, s.day - 1)} · {km(s.plannedKm)} · {hm(s.plannedAscent)}</div>
+                  <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>{stageDate(trip.startDate, s.day - 1)} · {km(stats[s.id]?.km ?? s.plannedKm)} · {hm(stats[s.id]?.ascent ?? s.plannedAscent)}</div>
                 </div>
                 {a?.ridden && <span className="pill ok">gefahren</span>}
               </button>
@@ -82,7 +88,7 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '12px 0' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
-                      {s.cols.map((c) => <ColBadge key={c.name} col={c} />)}
+                      {(stats[s.id]?.passes ?? s.cols).map((c, i) => <ColBadge key={i} col={c} />)}
                     </div>
                     <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} />
                   </div>
@@ -102,7 +108,7 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
         })}
       </div>
 
-      {navStage && <Navigation stage={navStage} base={base} onClose={() => setNavStage(null)} />}
+      {navStage && <Navigation stage={navStage} passes={stats[navStage.id]?.passes ?? []} base={base} onClose={() => setNavStage(null)} />}
       {gpxStage && (
         <GpxManager
           stage={gpxStage}

@@ -72,6 +72,38 @@ export function parseGpxDetailed(text: string): GpxDetail {
   return { track, ascent: Math.round(ascent), km: Math.round(trackDistanceKm(track)), name }
 }
 
+export interface ProfilePt { lat: number; lng: number; ele: number }
+
+/** Punkte mit Hoehe fuer die Pass-Erkennung (nur Punkte mit ele). */
+export function parseGpxProfile(text: string): ProfilePt[] {
+  const doc = new DOMParser().parseFromString(text, 'application/xml')
+  if (doc.querySelector('parsererror')) return []
+  const out: ProfilePt[] = []
+  doc.querySelectorAll('trkpt, rtept').forEach((p) => {
+    const lat = parseFloat(p.getAttribute('lat') ?? '')
+    const lng = parseFloat(p.getAttribute('lon') ?? '')
+    const ele = parseFloat(p.querySelector('ele')?.textContent ?? '')
+    if (!Number.isNaN(lat) && !Number.isNaN(lng) && !Number.isNaN(ele)) out.push({ lat, lng, ele })
+  })
+  return out
+}
+
+export interface Waypoint { lat: number; lng: number; name: string }
+
+/** Benannte Wegpunkte (<wpt>) – dienen als Namens-Gazetteer fuer erkannte Paesse. */
+export function parseGpxWaypoints(text: string): Waypoint[] {
+  const doc = new DOMParser().parseFromString(text, 'application/xml')
+  if (doc.querySelector('parsererror')) return []
+  const out: Waypoint[] = []
+  doc.querySelectorAll('wpt').forEach((w) => {
+    const lat = parseFloat(w.getAttribute('lat') ?? '')
+    const lng = parseFloat(w.getAttribute('lon') ?? '')
+    const name = w.querySelector('name')?.textContent?.trim() ?? ''
+    if (!Number.isNaN(lat) && !Number.isNaN(lng) && name) out.push({ lat, lng, name })
+  })
+  return out
+}
+
 const LOCAL_GPX_PREFIX = 'alpes-gpx:'
 
 /** Liest den GPX-Text einer trackUrl: `local:{key}` aus localStorage, sonst per fetch. */

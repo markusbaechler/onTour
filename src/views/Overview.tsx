@@ -7,23 +7,33 @@ import { IdentityPicker } from '../components/IdentityPicker'
 import { IcCheck, IcCircle } from '../components/Icons'
 import { fmt, km, hm, dateRange } from '../lib/format'
 import { actualFor } from '../lib/store'
+import type { StageStats } from '../lib/passes'
 import type { Actual } from '../types'
 
 interface Props {
   actuals: Actual[]
+  stats: Record<string, StageStats>
   onOpenStage: (id: string) => void
   viewerName: string
   onChangeName: (name: string) => void
 }
 
-export function Overview({ actuals, onOpenStage, viewerName, onChangeName }: Props) {
+export function Overview({ actuals, stats, onOpenStage, viewerName, onChangeName }: Props) {
   const [switching, setSwitching] = useState(false)
+  // Distanz/Hoehe/Pass-Anzahl aus dem GPX (sobald geladen), sonst Soll aus trip.ts.
   const totals = useMemo(() => {
-    const km_ = trip.stages.reduce((s, x) => s + x.plannedKm, 0)
-    const hm_ = trip.stages.reduce((s, x) => s + x.plannedAscent, 0)
-    const cols = trip.stages.reduce((s, x) => s + x.cols.length, 0)
-    return { km_, hm_, cols }
-  }, [])
+    const ready = trip.stages.every((s) => stats[s.id])
+    if (ready) return {
+      km_: trip.stages.reduce((a, s) => a + stats[s.id].km, 0),
+      hm_: trip.stages.reduce((a, s) => a + stats[s.id].ascent, 0),
+      cols: trip.stages.reduce((a, s) => a + stats[s.id].passes.length, 0),
+    }
+    return {
+      km_: trip.stages.reduce((s, x) => s + x.plannedKm, 0),
+      hm_: trip.stages.reduce((s, x) => s + x.plannedAscent, 0),
+      cols: trip.stages.reduce((s, x) => s + x.cols.length, 0),
+    }
+  }, [stats])
 
   const ridden = actuals.filter((a) => a.ridden).length
 
@@ -57,7 +67,7 @@ export function Overview({ actuals, onOpenStage, viewerName, onChangeName }: Pro
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <div className="stat"><div className="num" style={{ color: 'var(--signal)' }}>{fmt(totals.km_)}</div><div className="lbl">Kilometer</div></div>
         <div className="stat"><div className="num" style={{ color: 'var(--glacier)' }}>{fmt(totals.hm_)}</div><div className="lbl">Höhenmeter</div></div>
-        <div className="stat"><div className="num">{totals.cols}</div><div className="lbl">Cols</div></div>
+        <div className="stat"><div className="num">{totals.cols}</div><div className="lbl">Pässe</div></div>
       </div>
 
       <div style={{ marginBottom: 18 }}>
@@ -72,7 +82,10 @@ export function Overview({ actuals, onOpenStage, viewerName, onChangeName }: Pro
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {trip.stages.map((s) => {
           const a = actualFor(actuals, s.id)
-          const top = s.cols.reduce((m, c) => (c.altitude > m.altitude ? c : m), s.cols[0])
+          const passes = stats[s.id]?.passes
+          const top = passes?.length
+            ? passes.reduce((m, p) => (p.altitude > m.altitude ? p : m))
+            : (s.cols.length ? s.cols.reduce((m, c) => (c.altitude > m.altitude ? c : m), s.cols[0]) : undefined)
           return (
             <button key={s.id} className="row" onClick={() => onOpenStage(s.id)}>
               <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 12 }}>T{s.day}</span>
