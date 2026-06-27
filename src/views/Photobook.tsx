@@ -1,19 +1,31 @@
 import { useState } from 'react'
 import { trip } from '../data/trip'
 import { PhotoUpload } from '../components/PhotoUpload'
-import { IcX, IcUser, IcCamera } from '../components/Icons'
+import { PhotoLightbox } from '../components/PhotoLightbox'
+import { IcCamera } from '../components/Icons'
 import { stageDate } from '../lib/format'
-import type { Photo } from '../types'
+import type { Comment, Photo, Reaction } from '../types'
 
 interface Props {
   photos: Photo[]
+  comments: Comment[]
+  reactions: Reaction[]
+  viewerName: string
   onAdd: (p: Photo) => void
   onRemove: (id: string) => void
+  onAddComment: (c: Comment) => void
+  onToggleReaction: (photoId: string, author: string, emoji: string) => void
+  onChangeName: (name: string) => void
 }
 
-export function Photobook({ photos, onAdd, onRemove }: Props) {
-  const [active, setActive] = useState<Photo | null>(null)
+export function Photobook({
+  photos, comments, reactions, viewerName,
+  onAdd, onRemove, onAddComment, onToggleReaction, onChangeName,
+}: Props) {
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const active = photos.find((p) => p.id === activeId) ?? null
   const total = photos.length
+  const countFor = (id: string) => comments.filter((c) => c.photoId === id).length + reactions.filter((r) => r.photoId === id).length
 
   return (
     <div className="view">
@@ -45,9 +57,19 @@ export function Photobook({ photos, onAdd, onRemove }: Props) {
                 </div>
               ) : (
                 <div className="grid-photos">
-                  {ps.map((p) => (
-                    <img key={p.id} src={p.thumbUrl} alt={p.caption ?? `Foto von ${p.author}`} loading="lazy" onClick={() => setActive(p)} />
-                  ))}
+                  {ps.map((p) => {
+                    const n = countFor(p.id)
+                    return (
+                      <div key={p.id} style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setActiveId(p.id)}>
+                        <img src={p.thumbUrl} alt={p.caption ?? `Foto von ${p.author}`} loading="lazy" />
+                        {n > 0 && (
+                          <span className="mono" style={{ position: 'absolute', right: 5, bottom: 5, background: 'rgba(8,7,10,.72)', color: 'var(--snow)', fontSize: 10, padding: '1px 6px', borderRadius: 999 }}>
+                            💬 {n}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </section>
@@ -56,33 +78,17 @@ export function Photobook({ photos, onAdd, onRemove }: Props) {
       </div>
 
       {active && (
-        <div
-          onClick={() => setActive(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(8,7,10,.94)', zIndex: 50, display: 'flex', flexDirection: 'column' }}
-        >
-          <button
-            onClick={() => setActive(null)}
-            style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', color: 'var(--snow)', zIndex: 1 }}
-            aria-label="Schliessen"
-          >
-            <IcX size={26} />
-          </button>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={(e) => e.stopPropagation()}>
-            <img src={active.url} alt={active.caption ?? ''} style={{ maxWidth: '100%', maxHeight: '78vh', borderRadius: 10 }} />
-          </div>
-          <div style={{ padding: '0 20px 28px', display: 'flex', alignItems: 'center', gap: 10 }} onClick={(e) => e.stopPropagation()}>
-            <IcUser size={18} />
-            <span style={{ fontSize: 14 }}>{active.author}</span>
-            {active.caption && <span className="muted" style={{ fontSize: 14 }}>· {active.caption}</span>}
-            <button
-              onClick={() => { onRemove(active.id); setActive(null) }}
-              className="pill plan"
-              style={{ marginLeft: 'auto', background: 'none', cursor: 'pointer' }}
-            >
-              Löschen
-            </button>
-          </div>
-        </div>
+        <PhotoLightbox
+          photo={active}
+          comments={comments}
+          reactions={reactions}
+          viewerName={viewerName}
+          onClose={() => setActiveId(null)}
+          onRemove={(id) => { onRemove(id); setActiveId(null) }}
+          onAddComment={onAddComment}
+          onToggleReaction={onToggleReaction}
+          onChangeName={onChangeName}
+        />
       )}
     </div>
   )

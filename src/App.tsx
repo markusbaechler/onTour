@@ -5,6 +5,7 @@ import { Stages } from './views/Stages'
 import { SollIst } from './views/SollIst'
 import { Photobook } from './views/Photobook'
 import { useStore } from './lib/store'
+import { useViewer } from './lib/viewer'
 
 const PASSWORD = import.meta.env.VITE_TRIP_PASSWORD
 
@@ -13,6 +14,7 @@ export default function App() {
   const [openStage, setOpenStage] = useState<string | undefined>()
   const [unlocked, setUnlocked] = useState(() => !PASSWORD || sessionStorage.getItem('alpes-ok') === '1')
   const store = useStore()
+  const viewer = useViewer()
   const base = import.meta.env.BASE_URL
 
   if (!unlocked) return <Gate onUnlock={() => setUnlocked(true)} />
@@ -27,7 +29,19 @@ export default function App() {
       {tab === 'overview' && <Overview actuals={store.actuals} onOpenStage={openStageInStages} />}
       {tab === 'stages' && <Stages actuals={store.actuals} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
       {tab === 'sollist' && <SollIst actuals={store.actuals} onUpsert={store.upsertActual} />}
-      {tab === 'photos' && <Photobook photos={store.photos} onAdd={store.addPhoto} onRemove={store.removePhoto} />}
+      {tab === 'photos' && (
+        <Photobook
+          photos={store.photos}
+          comments={store.comments}
+          reactions={store.reactions}
+          viewerName={viewer.name}
+          onAdd={store.addPhoto}
+          onRemove={store.removePhoto}
+          onAddComment={store.addComment}
+          onToggleReaction={store.toggleReaction}
+          onChangeName={viewer.setName}
+        />
+      )}
       <Nav tab={tab} onChange={(t) => { setOpenStage(undefined); setTab(t) }} />
     </div>
   )
