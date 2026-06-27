@@ -22,4 +22,5 @@ export const IcSend = (p: P) => (<S {...p}><path d="M21 3 10.5 13.5" /><path d="
 export const IcSmile = (p: P) => (<S {...p}><circle cx="12" cy="12" r="9" /><path d="M8.5 14a4 4 0 0 0 7 0" /><circle cx="9" cy="10" r="0.6" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r="0.6" fill="currentColor" stroke="none" /></S>)
 export const IcMoodPlus = (p: P) => (<S {...p}><path d="M20.9 11A9 9 0 1 0 13 20.9" /><path d="M8.5 14a4 4 0 0 0 5.5 1.5" /><circle cx="9" cy="10" r="0.6" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r="0.6" fill="currentColor" stroke="none" /><path d="M16 19h6M19 16v6" /></S>)
 export const IcPin = (p: P) => (<S {...p}><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></S>)
+export const IcExternal = (p: P) => (<S {...p}><path d="M14 4h6v6" /><path d="M20 4 11 13" /><path d="M18 13.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5.5" /></S>)
 export const IcBroadcast = (p: P) => (<S {...p}><circle cx="12" cy="12" r="2" /><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2" /></S>)

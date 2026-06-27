@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { uploadGpx } from '../lib/cloudinary'
 import { loadGpxDetailed, parseGpxDetailed, removeLocalGpx, type GpxDetail } from '../lib/gpx'
 import { km as fmtKm, hm as fmtHm } from '../lib/format'
-import { IcDownload, IcUpload, IcX } from './Icons'
+import { IcDownload, IcExternal, IcUpload, IcX } from './Icons'
 import type { Actual, Stage } from '../types'
+
+// Externer Routen-Editor (kein Editor in onTour); bearbeitete Route kommt als GPX zurueck.
+const EDITOR_URL = 'https://markusbaechler.github.io/motorbike/'
 
 interface Props {
   stage: Stage
@@ -103,6 +106,10 @@ export function GpxManager({ stage, actual, base, istLocked, istLockHint, onUpse
               <button className="btn ghost" onClick={resetPlan} title="Auf mitgeliefertes Roadbook zurücksetzen">Original</button>
             )}
           </div>
+          <a className="btn ghost" href={EDITOR_URL} target="_blank" rel="noopener noreferrer" style={{ width: '100%', marginTop: 8, textDecoration: 'none', fontSize: 13 }}>
+            <IcExternal size={16} /> Route im Tool bearbeiten
+          </a>
+          <div className="mono muted" style={{ fontSize: 10, marginTop: 6 }}>Im Tool bearbeiten, GPX exportieren → hier als „Ersatz" zurückladen.</div>
           <input ref={planInput} type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" onChange={(e) => { const f = e.target.files?.[0]; if (f) replacePlan(f); e.currentTarget.value = '' }} />
         </section>
 
