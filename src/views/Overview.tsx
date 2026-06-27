@@ -20,7 +20,7 @@ export function Overview({ actuals, onOpenStage }: { actuals: Actual[]; onOpenSt
   return (
     <div className="view">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span className="eyebrow">Alpes · {trip.subtitle}</span>
+        <span className="eyebrow">{trip.title} · {trip.subtitle}</span>
         <IcRoute size={20} />
       </div>
 

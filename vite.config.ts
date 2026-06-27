@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Alpes \u2013 Tour des Cols',
-        short_name: 'Alpes',
+        name: 'bbz Cannonball \u2013 Tour de France',
+        short_name: 'bbz Cannonball',
         description: 'Motorradtour durch die franz\u00f6sischen Alpen',
         theme_color: '#0E0D11',
         background_color: '#0E0D11',

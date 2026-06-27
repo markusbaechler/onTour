@@ -8,6 +8,7 @@ import { Live } from './views/Live'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare } from './lib/geo'
+import { trip } from './data/trip'
 
 const PASSWORD = import.meta.env.VITE_TRIP_PASSWORD
 
@@ -73,7 +74,7 @@ function Gate({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="shell">
       <div className="view" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '80vh', gap: 14 }}>
-        <span className="eyebrow">Alpes · Tour des Cols</span>
+        <span className="eyebrow">{trip.title} · {trip.subtitle}</span>
         <h1 className="h1">Trip-Passwort</h1>
         <input
           autoFocus
