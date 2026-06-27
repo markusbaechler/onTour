@@ -4,8 +4,10 @@ import { Overview } from './views/Overview'
 import { Stages } from './views/Stages'
 import { SollIst } from './views/SollIst'
 import { Photobook } from './views/Photobook'
+import { Live } from './views/Live'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
+import { useGeoShare } from './lib/geo'
 
 const PASSWORD = import.meta.env.VITE_TRIP_PASSWORD
 
@@ -15,6 +17,7 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(() => !PASSWORD || sessionStorage.getItem('alpes-ok') === '1')
   const store = useStore()
   const viewer = useViewer()
+  const geo = useGeoShare(store.setLocation)
   const base = import.meta.env.BASE_URL
 
   if (!unlocked) return <Gate onUnlock={() => setUnlocked(true)} />
@@ -39,6 +42,17 @@ export default function App() {
           onRemove={store.removePhoto}
           onAddComment={store.addComment}
           onToggleReaction={store.toggleReaction}
+          onChangeName={viewer.setName}
+        />
+      )}
+      {tab === 'live' && (
+        <Live
+          live={store.live}
+          viewerName={viewer.name}
+          sharing={geo.sharing}
+          geoError={geo.error}
+          onStartShare={geo.start}
+          onStopShare={geo.stop}
           onChangeName={viewer.setName}
         />
       )}

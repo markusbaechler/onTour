@@ -3,6 +3,7 @@ import { trip } from '../data/trip'
 import { clock, timeAgo } from '../lib/format'
 import type { Comment, Photo, Reaction } from '../types'
 import { Avatar } from './Avatar'
+import { NamePrompt } from './NamePrompt'
 import { IcMoodPlus, IcSend, IcSmile, IcX } from './Icons'
 
 const REACTIONS = ['❤️', '🔥', '😮', '😍', '👏', '😂', '🙏', '💪']
@@ -27,7 +28,6 @@ export function PhotoLightbox({
   const [picker, setPicker] = useState(false)
   const [emojiBar, setEmojiBar] = useState(false)
   const [askName, setAskName] = useState(false)
-  const [nameDraft, setNameDraft] = useState(viewerName)
   const pending = useRef<((name: string) => void) | null>(null)
 
   const stageDay = trip.stages.find((s) => s.id === photo.stageId)?.day
@@ -57,13 +57,10 @@ export function PhotoLightbox({
   function withName(action: (name: string) => void) {
     if (viewerName) { action(viewerName); return }
     pending.current = action
-    setNameDraft('')
     setAskName(true)
   }
 
-  function confirmName() {
-    const t = nameDraft.trim()
-    if (!t) return
+  function confirmName(t: string) {
     onChangeName(t)
     setAskName(false)
     const next = pending.current
@@ -172,26 +169,17 @@ export function PhotoLightbox({
 
         <div style={{ fontSize: 11, color: 'var(--mist)', marginTop: 8 }}>
           {viewerName ? <>Kommentierst als <b style={{ fontWeight: 500 }}>{viewerName}</b> · </> : 'Beim ersten Kommentar fragen wir nach deinem Namen · '}
-          <button onClick={() => { setNameDraft(viewerName); pending.current = null; setAskName(true) }} style={linkBtn}>Name ändern</button>
+          <button onClick={() => { pending.current = null; setAskName(true) }} style={linkBtn}>Name ändern</button>
         </div>
       </div>
 
       {askName && (
-        <div onClick={(e) => { e.stopPropagation(); setAskName(false) }} style={nameOverlay}>
-          <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <span className="eyebrow">Dein Name</span>
-            <div className="muted" style={{ fontSize: 13 }}>Wird neben deinen Kommentaren und Reaktionen angezeigt.</div>
-            <input
-              autoFocus
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && confirmName()}
-              placeholder="z. B. Markus"
-              style={{ background: 'var(--ink-2)', color: 'var(--snow)', border: '0.5px solid var(--slate)', borderRadius: 8, padding: '11px 13px', fontSize: 16 }}
-            />
-            <button className="btn" onClick={confirmName} disabled={!nameDraft.trim()}>Speichern</button>
-          </div>
-        </div>
+        <NamePrompt
+          initial={viewerName}
+          hint="Wird neben deinen Kommentaren und Reaktionen angezeigt."
+          onSave={confirmName}
+          onClose={() => setAskName(false)}
+        />
       )}
     </div>
   )
@@ -236,8 +224,4 @@ function iconBtn(color: string, disabled = false): React.CSSProperties {
 }
 const linkBtn: React.CSSProperties = {
   background: 'none', border: 'none', color: 'var(--mist)', textDecoration: 'underline', padding: 0, fontSize: 11, cursor: 'pointer',
-}
-const nameOverlay: React.CSSProperties = {
-  position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(8,7,10,.7)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
 }
