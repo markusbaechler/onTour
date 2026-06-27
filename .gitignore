@@ -10,3 +10,6 @@ dist-ssr
 
 # Handoff-Arbeitsartefakte (Zip + Spec-Kopie), gehoeren nicht ins Repo
 handoff/
+
+# Liefer-/Importordner fuer Roh-GPX. Kanonisch sind public/roadbooks/tN.gpx.
+gpx_routes/
