@@ -1,103 +1,63 @@
 # Alpes – Tour des Cols
 
-Page **und** installierbare App (PWA) für eine einwöchige Motorradtour durch die französischen Alpen.
-Dunkles Cockpit-Design, **Col-Schild** als Signature-Element.
+Page **und** installierbare PWA für eine einwöchige Motorradtour durch die französischen Alpen.
+Für **3 Fahrer** und die **Daheimgebliebenen**. Dunkles Cockpit-Design, Col-Schild als Signature.
 
-- **Übersicht** der Gesamttour (Distanz, Höhenmeter, Cols, Karte)
-- **Etappen (Soll)** mit Roadbook-Download (GPX) je Tag
-- **Soll-Ist-Vergleich** – Ist-Werte manuell erfassen oder per **gefahrenem GPX** automatisch (Distanz + Höhenmeter)
-- **Fotobuch** entlang der Strecke (Polarsteps-Stil), Upload durch **alle 3 Teilnehmenden**
-- **Kostenlos**, installierbar (Home-Bildschirm), offline-fähige Karte
+**Features:** Gesamtübersicht · Etappen (Soll) mit Roadbook-GPX · Soll-Ist (auch per gefahrenem GPX) ·
+Fotobuch mit Upload aller Fahrer · **Kommentare + Emoji-Reaktionen** je Foto · **Live-Standort ("last seen")** der Fahrer.
 
-## Stack
+## Stack & Architektur
 
-| Zweck | Technik | Kosten |
+| Zweck | Lösung | Free-Tier |
 |---|---|---|
 | Frontend / PWA | Vite + React + TypeScript | – |
-| Karte | Leaflet + CARTO Dark Tiles | gratis |
-| Foto-Bytes | **Cloudinary** (unsigned upload) | Free-Tier 25 GB |
-| Soll-Ist + Foto-Index | **Google Apps Script** (Mini-API) | gratis, kein Pause |
+| Karte | Leaflet + CARTO dark_all | gratis |
+| Foto-Bytes | Cloudinary (unsigned upload) | 25 GB |
+| Daten (Soll-Ist, Fotos-Index, Kommentare, Standort) | Google Apps Script, **operationsbasiert mit LockService** | gratis, kein Pause |
 | Hosting | GitHub Pages + Actions | gratis |
 
-Bewusst **ohne** Supabase/Firebase/Cloudflare: keine zusätzlichen DB-Accounts, kein Inaktivitäts-Pause-Problem.
+Prinzip: **Cloudinary = Bytes, Apps Script = Metadaten.** Kein Supabase/Firebase/Cloudflare.
+Mehrere gleichzeitige Schreibende (Fahrer-Pings, Kommentare) → Apps Script merged `data`-Operationen unter Lock;
+Standort liegt in eigenen Keys `loc:<fahrer>`.
 
-## Schnellstart (Demo, ohne jeden Account)
+## Schnellstart (Demo, ohne Account)
 
 ```bash
-npm install
-npm run dev
+npm install && npm run dev
 ```
 
-Läuft sofort mit Beispieldaten. Fotos werden im Demo-Modus nur lokal im eigenen Browser gehalten,
-Soll-Ist im `localStorage`. Zum echten Teilen → unten scharfschalten.
+Läuft sofort mit Seed-Daten; alles (inkl. Kommentare/Standort) wird im Demo-Modus in `localStorage` gespiegelt.
 
-## Scharfschalten für die 3 Teilnehmenden
+## Scharfschalten
 
-`.env.example` nach `.env` kopieren und ausfüllen.
+`.env.example` → `.env`.
 
-### 1 · Fotos (Cloudinary)
-
-1. Account auf [cloudinary.com](https://cloudinary.com) (Free).
-2. **Settings → Upload → Add upload preset** → *Signing Mode:* **Unsigned**. Preset-Name notieren.
-3. In `.env`:
-   ```
-   VITE_CLOUDINARY_CLOUD=dein-cloud-name
-   VITE_CLOUDINARY_PRESET=dein-unsigned-preset
-   ```
-
-Damit lädt jede:r der drei Fotos direkt aus dem Browser hoch – ohne Server, ohne Login.
-
-### 2 · Daten (Google Apps Script)
-
-1. [script.google.com](https://script.google.com) → **Neues Projekt** → Inhalt von `apps-script/Code.gs` einfügen.
-2. **Bereitstellen → Neue Bereitstellung → Web-App**
-   - *Ausführen als:* Ich
-   - *Zugriff:* **Jeder**
-3. Web-App-URL kopieren → `.env`:
-   ```
-   VITE_DATA_API=https://script.google.com/macros/s/AKfy.../exec
-   ```
-
-Soll-Ist und Foto-Index werden so für alle synchron gehalten (Last-Write-Wins, reicht für 3 Leute).
-
-### 3 · Optional: Passwort
-
-```
-VITE_TRIP_PASSWORD=euer-geheimnis
-```
-
-## Deploy auf GitHub Pages
-
-> **Wichtig:** Der Base-Pfad in `vite.config.ts` muss eurem Repo-Namen entsprechen.
-> Default ist `/alpes-tour/`. Heisst euer Repo `alpen-2026`, dann
-> `VITE_BASE=/alpen-2026/` setzen (Env) **oder** den Default in `vite.config.ts` ändern.
-
-1. Repo nach GitHub pushen.
-2. **Settings → Pages → Source:** *GitHub Actions*.
-3. Secrets unter **Settings → Secrets and variables → Actions** anlegen:
-   `VITE_CLOUDINARY_CLOUD`, `VITE_CLOUDINARY_PRESET`, `VITE_DATA_API`, ggf. `VITE_TRIP_PASSWORD`.
-4. Push auf `main` → der Workflow `.github/workflows/deploy.yml` baut und veröffentlicht.
-
-Alternativ ohne Pages: `npm run build` und `dist/` auf einen beliebigen Static-Host (Netlify, Vercel) legen – dann `VITE_BASE=/`.
-
-## Eigene Tour eintragen
-
-- **Etappen, Cols, Koordinaten:** `src/data/trip.ts`
-- **Roadbooks:** echte GPX-Dateien nach `public/roadbooks/` legen (z. B. aus deinem Routenplaner exportiert) und in `trip.ts` als `gpxUrl` referenzieren. Die mitgelieferten Dateien sind Platzhalter.
-- Der grobe `track` je Etappe steuert nur die Kartenlinie der Planung; die echte Form kommt aus dem GPX.
+1. **Cloudinary** (Fotos): Account → Settings → Upload → Add upload preset → *Unsigned*.
+   → `VITE_CLOUDINARY_CLOUD`, `VITE_CLOUDINARY_PRESET`.
+2. **Apps Script** (Daten): `apps-script/Code.gs` in script.google.com einfügen → Bereitstellen → Web-App
+   (*Ausführen als:* Ich · *Zugriff:* Jeder) → URL als `VITE_DATA_API`.
+3. Optional Passwort: `VITE_TRIP_PASSWORD`.
 
 ## Datenmodell
 
-`Cloudinary = Bytes`, `Apps Script = Metadaten`. Der gemeinsame Stand ist ein JSON:
+`data` = `{ actuals, photos, comments, reactions }` (über Operationen, siehe `src/lib/dataApi.ts`).
+`loc:<fahrer>` = letzter Standort. Typen in `src/types.ts`.
 
-```ts
-{ actuals: Actual[]; photos: Photo[] }
-```
+## Deploy auf GitHub Pages
 
-Typen in `src/types.ts`. Foto = `{ url, thumbUrl, author, stageId, caption?, createdAt }`.
+`base` in `vite.config.ts` = `/<repo-name>/`. Pages-Source = GitHub Actions.
+Env-Secrets im Repo hinterlegen. Push auf `main` → `.github/workflows/deploy.yml` baut & deployt.
+Anderer Host (Netlify/Vercel): `npm run build`, `dist/` hochladen, `VITE_BASE=/`.
+
+## Eigene Tour
+
+Route in `src/data/trip.ts`. Echte Roadbooks als GPX nach `public/roadbooks/`. Mitgelieferte GPX sind Platzhalter.
+
+## Mockups
+
+Visuelle Referenz in `design/` (alle Screens + Navi-Splitscreen + Live-Karte + Kommentare). Siehe `HANDOFF.md`.
 
 ## Grenzen
 
-- Foto-Sync schreibt den ganzen Stand neu (Last-Write-Wins). Für 3 Leute unkritisch.
-- Cloudinary Free: 25 GB – für eine Woche zu dritt mit Auto-Komprimierung reichlich.
-- Apps Script: einfache Requests, keine Authentifizierung der Schreibenden (Trip-Passwort schützt nur die UI).
+Live-Standort = **"last seen"**, kein Hintergrund-GPS (PWA/iOS): aktualisiert nur bei offener App.
+Cloudinary Free 25 GB. Apps Script: Tageskontingent begrenzt → Standort-Pings gedrosselt (≥30 s / >50 m), Betrachter pollen 30–60 s.

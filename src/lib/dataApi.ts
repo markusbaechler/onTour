@@ -1,51 +1,79 @@
-import type { Actual, Photo } from '../types'
+import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
 
 const API = import.meta.env.VITE_DATA_API
 export const dataApiReady = Boolean(API)
 
-export interface Store {
+export interface DataStore {
   actuals: Actual[]
   photos: Photo[]
+  comments: Comment[]
+  reactions: Reaction[]
 }
+export type LiveStore = Record<string, RiderLocation>
 
-const LS_KEY = 'alpes-tour-store'
-const empty: Store = { actuals: [], photos: [] }
+const emptyData: DataStore = { actuals: [], photos: [], comments: [], reactions: [] }
+const LS_DATA = 'alpes-data'
+const LS_LIVE = 'alpes-live'
 
-function readLocal(): Store {
+const readLS = <T,>(k: string, fallback: T): T => {
+  try { return { ...fallback, ...JSON.parse(localStorage.getItem(k) ?? '{}') } } catch { return fallback }
+}
+const writeLS = (k: string, v: unknown) => localStorage.setItem(k, JSON.stringify(v))
+
+/** Eine Operation = ein POST. Demo-Modus (kein API): lokal auf localStorage anwenden. */
+export type Op =
+  | { op: 'upsertActual'; actual: Actual }
+  | { op: 'addPhoto'; photo: Photo }
+  | { op: 'removePhoto'; id: string }
+  | { op: 'addComment'; comment: Comment }
+  | { op: 'removeComment'; id: string }
+  | { op: 'addReaction'; reaction: Reaction }
+  | { op: 'removeReaction'; photoId: string; author: string; emoji: string }
+  | { op: 'setLocation'; rider: string; lat: number; lng: number; accuracy?: number; speed?: number; heading?: number }
+
+export async function loadData(): Promise<DataStore> {
+  if (!dataApiReady) return readLS(LS_DATA, emptyData)
   try {
-    return { ...empty, ...JSON.parse(localStorage.getItem(LS_KEY) ?? '{}') }
-  } catch {
-    return { ...empty }
-  }
+    const res = await fetch(`${API}?scope=data`)
+    return { ...emptyData, ...(await res.json()) }
+  } catch { return readLS(LS_DATA, emptyData) }
 }
 
-function writeLocal(s: Store) {
-  localStorage.setItem(LS_KEY, JSON.stringify(s))
-}
-
-/** Liest den gesamten gemeinsamen Stand. */
-export async function loadStore(): Promise<Store> {
-  if (!dataApiReady) return readLocal()
+export async function loadLive(): Promise<LiveStore> {
+  if (!dataApiReady) return readLS<LiveStore>(LS_LIVE, {})
   try {
-    const res = await fetch(API!, { method: 'GET' })
-    if (!res.ok) throw new Error()
-    const data = (await res.json()) as Partial<Store>
-    return { ...empty, ...data }
-  } catch {
-    return readLocal()
-  }
+    const res = await fetch(`${API}?scope=live`)
+    return (await res.json()) as LiveStore
+  } catch { return readLS<LiveStore>(LS_LIVE, {}) }
 }
 
-/**
- * Speichert den gesamten Stand. Apps Script erwartet text/plain, um den
- * CORS-Preflight zu vermeiden (einfacher, kein OPTIONS noetig).
- */
-export async function saveStore(s: Store): Promise<void> {
-  writeLocal(s)
-  if (!dataApiReady) return
-  await fetch(API!, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(s),
-  })
+export async function sendOp(op: Op): Promise<void> {
+  if (dataApiReady) {
+    await fetch(API!, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(op) })
+    return
+  }
+  // Demo-Fallback: Operation lokal anwenden (spiegelt die Server-Merge-Logik)
+  if (op.op === 'setLocation') {
+    const live = readLS<LiveStore>(LS_LIVE, {})
+    live[op.rider] = { rider: op.rider, lat: op.lat, lng: op.lng, at: new Date().toISOString(), accuracy: op.accuracy, speed: op.speed, heading: op.heading }
+    writeLS(LS_LIVE, live)
+    return
+  }
+  const d = readLS(LS_DATA, emptyData)
+  switch (op.op) {
+    case 'upsertActual': {
+      const i = d.actuals.findIndex((a) => a.stageId === op.actual.stageId)
+      if (i >= 0) d.actuals[i] = op.actual; else d.actuals.push(op.actual); break
+    }
+    case 'addPhoto': d.photos.unshift(op.photo); break
+    case 'removePhoto': d.photos = d.photos.filter((p) => p.id !== op.id); break
+    case 'addComment': d.comments.push(op.comment); break
+    case 'removeComment': d.comments = d.comments.filter((c) => c.id !== op.id); break
+    case 'addReaction':
+      if (!d.reactions.some((r) => r.photoId === op.reaction.photoId && r.author === op.reaction.author && r.emoji === op.reaction.emoji)) d.reactions.push(op.reaction)
+      break
+    case 'removeReaction':
+      d.reactions = d.reactions.filter((r) => !(r.photoId === op.photoId && r.author === op.author && r.emoji === op.emoji)); break
+  }
+  writeLS(LS_DATA, d)
 }

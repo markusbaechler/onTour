@@ -7,3 +7,6 @@ dist-ssr
 
 # build info
 *.tsbuildinfo
+
+# Handoff-Arbeitsartefakte (Zip + Spec-Kopie), gehoeren nicht ins Repo
+handoff/

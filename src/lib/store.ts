@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { Actual, Photo } from '../types'
-import { dataApiReady, loadStore, saveStore, type Store } from './dataApi'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
+import { dataApiReady, loadData, loadLive, sendOp, type DataStore, type LiveStore } from './dataApi'
 
-// Im Demo-Modus (kein gemeinsames Backend) seedet die App ein paar Werte,
-// damit Soll-Ist und Fotobuch nicht leer wirken.
-const demoSeed: Store = {
+const LIVE_POLL_MS = 45_000 // Betrachter pollen alle ~45 s
+const FRESH_MS = 15 * 60_000 // < 15 Min = "live"
+
+const demoSeed: DataStore = {
   actuals: [
     { stageId: 't1', ridden: true, actualKm: 221, actualAscent: 4050, movingTime: '5:48', note: 'Galibier oben noch Schneewände.' },
     { stageId: 't2', ridden: true, actualKm: 129, actualAscent: 2810, movingTime: '4:02', note: 'Izoard top, Casse Déserte surreal.' },
@@ -14,63 +15,83 @@ const demoSeed: Store = {
     { id: 'd2', stageId: 't1', url: 'https://picsum.photos/seed/lacets/1200/900', thumbUrl: 'https://picsum.photos/seed/lacets/400/400', author: 'Tom', caption: 'Kehren', createdAt: '2026-07-04T14:05:00Z' },
     { id: 'd3', stageId: 't2', url: 'https://picsum.photos/seed/izoard/1200/900', thumbUrl: 'https://picsum.photos/seed/izoard/400/400', author: 'Léa', caption: 'Casse Déserte', createdAt: '2026-07-05T10:40:00Z' },
   ],
+  comments: [
+    { id: 'c1', photoId: 'd1', author: 'Oma', text: 'Wahnsinn, passt auf euch auf da oben! 😍🙏', createdAt: '2026-07-04T12:10:00Z' },
+  ],
+  reactions: [
+    { photoId: 'd1', author: 'Sandra', emoji: '❤️', createdAt: '2026-07-04T12:00:00Z' },
+    { photoId: 'd1', author: 'Tom', emoji: '🔥', createdAt: '2026-07-04T12:30:00Z' },
+  ],
+}
+
+export function actualFor(actuals: Actual[], stageId: string) {
+  return actuals.find((a) => a.stageId === stageId)
+}
+export function isFresh(loc: RiderLocation) {
+  return Date.now() - new Date(loc.at).getTime() < FRESH_MS
 }
 
 export function useStore() {
-  const [store, setStore] = useState<Store>({ actuals: [], photos: [] })
+  const [data, setData] = useState<DataStore>({ actuals: [], photos: [], comments: [], reactions: [] })
+  const [live, setLive] = useState<LiveStore>({})
   const [loading, setLoading] = useState(true)
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   useEffect(() => {
     let active = true
-    loadStore().then((s) => {
+    loadData().then((d) => {
       if (!active) return
-      const seeded = !dataApiReady && s.actuals.length === 0 && s.photos.length === 0
-      setStore(seeded ? demoSeed : s)
+      const seeded = !dataApiReady && d.actuals.length === 0 && d.photos.length === 0
+      setData(seeded ? demoSeed : d)
       setLoading(false)
     })
-    return () => {
-      active = false
-    }
+    const pollLive = () => loadLive().then((l) => active && setLive(l))
+    pollLive()
+    const t = setInterval(pollLive, LIVE_POLL_MS)
+    return () => { active = false; clearInterval(t) }
   }, [])
 
-  const persist = useCallback((next: Store) => {
-    setStore(next)
-    void saveStore(next)
+  // Optimistisches Update + Operation an den Server
+  const apply = useCallback((next: DataStore, op: Parameters<typeof sendOp>[0]) => {
+    setData(next)
+    void sendOp(op)
   }, [])
 
-  const upsertActual = useCallback(
-    (a: Actual) => {
-      setStore((prev) => {
-        const actuals = prev.actuals.some((x) => x.stageId === a.stageId)
-          ? prev.actuals.map((x) => (x.stageId === a.stageId ? a : x))
-          : [...prev.actuals, a]
-        const next = { ...prev, actuals }
-        void saveStore(next)
-        return next
-      })
-    },
-    [],
-  )
+  const upsertActual = useCallback((a: Actual) => {
+    const d = dataRef.current
+    const actuals = d.actuals.some((x) => x.stageId === a.stageId) ? d.actuals.map((x) => (x.stageId === a.stageId ? a : x)) : [...d.actuals, a]
+    apply({ ...d, actuals }, { op: 'upsertActual', actual: a })
+  }, [apply])
 
   const addPhoto = useCallback((p: Photo) => {
-    setStore((prev) => {
-      const next = { ...prev, photos: [p, ...prev.photos] }
-      void saveStore(next)
-      return next
-    })
-  }, [])
+    apply({ ...dataRef.current, photos: [p, ...dataRef.current.photos] }, { op: 'addPhoto', photo: p })
+  }, [apply])
 
   const removePhoto = useCallback((id: string) => {
-    setStore((prev) => {
-      const next = { ...prev, photos: prev.photos.filter((p) => p.id !== id) }
-      void saveStore(next)
-      return next
-    })
+    const d = dataRef.current
+    apply({ ...d, photos: d.photos.filter((p) => p.id !== id) }, { op: 'removePhoto', id })
+  }, [apply])
+
+  const addComment = useCallback((c: Comment) => {
+    apply({ ...dataRef.current, comments: [...dataRef.current.comments, c] }, { op: 'addComment', comment: c })
+  }, [apply])
+
+  const toggleReaction = useCallback((photoId: string, author: string, emoji: string) => {
+    const d = dataRef.current
+    const has = d.reactions.some((r) => r.photoId === photoId && r.author === author && r.emoji === emoji)
+    if (has) {
+      apply({ ...d, reactions: d.reactions.filter((r) => !(r.photoId === photoId && r.author === author && r.emoji === emoji)) }, { op: 'removeReaction', photoId, author, emoji })
+    } else {
+      const reaction: Reaction = { photoId, author, emoji, createdAt: new Date().toISOString() }
+      apply({ ...d, reactions: [...d.reactions, reaction] }, { op: 'addReaction', reaction })
+    }
+  }, [apply])
+
+  const setLocation = useCallback((loc: Omit<RiderLocation, 'at'>) => {
+    setLive((l) => ({ ...l, [loc.rider]: { ...loc, at: new Date().toISOString() } }))
+    void sendOp({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
   }, [])
 
-  return { ...store, loading, upsertActual, addPhoto, removePhoto, persist }
-}
-
-export function actualFor(actuals: Actual[], stageId: string): Actual | undefined {
-  return actuals.find((a) => a.stageId === stageId)
+  return { ...data, live, loading, upsertActual, addPhoto, removePhoto, addComment, toggleReaction, setLocation }
 }

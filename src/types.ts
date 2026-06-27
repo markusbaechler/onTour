@@ -51,3 +51,31 @@ export interface Trip {
   riders: string[]
   stages: Stage[]
 }
+
+/** Emoji-Reaktion auf ein Foto (ein Tipp, pro Autor+Emoji einmalig) */
+export interface Reaction {
+  photoId: string
+  author: string
+  emoji: string
+  createdAt: string
+}
+
+/** Text-Kommentar (mit Emojis) unter einem Foto */
+export interface Comment {
+  id: string
+  photoId: string
+  author: string
+  text: string
+  createdAt: string
+}
+
+/** Letzter bekannter Standort eines Fahrers ("last seen", kein Hintergrund-GPS) */
+export interface RiderLocation {
+  rider: string
+  lat: number
+  lng: number
+  at: string // ISO
+  accuracy?: number
+  speed?: number
+  heading?: number
+}
