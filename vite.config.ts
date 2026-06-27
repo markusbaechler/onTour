@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // Base-Pfad fuer GitHub Pages: bei Projekt-Sites "/<repo-name>/".
 // Per Env ueberschreibbar (z. B. VITE_BASE=/ fuer lokale Domains / Vercel).
-const base = process.env.VITE_BASE ?? '/alpes-tour/'
+const base = process.env.VITE_BASE ?? '/onTour/'
 
 export default defineConfig({
   base,
