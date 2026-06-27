@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alpes - Tour des Cols" xmlns="http://www.topografix.com/GPX/1/1">
+ <metadata><name>Barcelonnette -> Guillaumes</name></metadata>
+ <trk><name>Barcelonnette -> Guillaumes</name><trkseg>
+   <trkpt lat="44.387" lon="6.652"><ele>600</ele></trkpt>
+   <trkpt lat="44.32" lon="6.81"><ele>2068</ele></trkpt>
+   <trkpt lat="44.25" lon="6.74"><ele>2068</ele></trkpt>
+   <trkpt lat="44.08" lon="6.85"><ele>600</ele></trkpt>
+ </trkseg></trk>
+</gpx>

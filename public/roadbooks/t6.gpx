@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alpes - Tour des Cols" xmlns="http://www.topografix.com/GPX/1/1">
+ <metadata><name>Castellane -> Gap</name></metadata>
+ <trk><name>Castellane -> Gap</name><trkseg>
+   <trkpt lat="43.847" lon="6.513"><ele>600</ele></trkpt>
+   <trkpt lat="44.05" lon="6.34"><ele>1097</ele></trkpt>
+   <trkpt lat="44.35" lon="6.21"><ele>1097</ele></trkpt>
+   <trkpt lat="44.559" lon="6.079"><ele>600</ele></trkpt>
+ </trkseg></trk>
+</gpx>

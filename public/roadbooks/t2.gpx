@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alpes - Tour des Cols" xmlns="http://www.topografix.com/GPX/1/1">
+ <metadata><name>Briancon -> Barcelonnette</name></metadata>
+ <trk><name>Briancon -> Barcelonnette</name><trkseg>
+   <trkpt lat="44.899" lon="6.6452"><ele>600</ele></trkpt>
+   <trkpt lat="44.82" lon="6.73"><ele>1773</ele></trkpt>
+   <trkpt lat="44.59" lon="6.69"><ele>1773</ele></trkpt>
+   <trkpt lat="44.387" lon="6.652"><ele>600</ele></trkpt>
+ </trkseg></trk>
+</gpx>

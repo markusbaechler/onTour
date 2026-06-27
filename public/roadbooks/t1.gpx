@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Alpes - Tour des Cols" xmlns="http://www.topografix.com/GPX/1/1">
+ <metadata><name>Grenoble -> Briancon</name></metadata>
+ <trk><name>Grenoble -> Briancon</name><trkseg>
+   <trkpt lat="45.1885" lon="5.7245"><ele>600</ele></trkpt>
+   <trkpt lat="45.36" lon="6.18"><ele>1621</ele></trkpt>
+   <trkpt lat="45.13" lon="6.41"><ele>2642</ele></trkpt>
+   <trkpt lat="45.06" lon="6.41"><ele>1621</ele></trkpt>
+   <trkpt lat="44.899" lon="6.6452"><ele>600</ele></trkpt>
+ </trkseg></trk>
+</gpx>
