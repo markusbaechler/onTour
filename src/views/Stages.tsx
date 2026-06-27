@@ -3,12 +3,28 @@ import { trip } from '../data/trip'
 import { ColBadge } from '../components/ColBadge'
 import { MapView } from '../components/MapView'
 import { RiddenToggle } from '../components/RiddenToggle'
-import { IcDownload, IcUpload, IcRoute } from '../components/Icons'
+import { GpxManager } from '../components/GpxManager'
+import { IcRoute, IcMap } from '../components/Icons'
 import { Navigation } from './Navigation'
 import { km, hm, stageDate } from '../lib/format'
-import { parseGpxDetailed } from '../lib/gpx'
+import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
 import type { Actual, LatLng, Stage } from '../types'
+
+/** Laedt gefahrene Tracks (Actual.trackUrl) fuer die Kartenlinie; reagiert auf Aenderungen. */
+function useRiddenTracks(actuals: Actual[]): Record<string, LatLng[]> {
+  const [tracks, setTracks] = useState<Record<string, LatLng[]>>({})
+  const sig = actuals.map((a) => `${a.stageId}:${a.trackUrl ?? ''}`).join('|')
+  useEffect(() => {
+    let on = true
+    const list = actuals.filter((a) => a.trackUrl)
+    Promise.all(list.map(async (a) => [a.stageId, (await loadGpxDetailed(a.trackUrl!)).track] as const))
+      .then((entries) => { if (on) setTracks(Object.fromEntries(entries.filter(([, t]) => t.length))) })
+    return () => { on = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig])
+  return tracks
+}
 
 interface Props {
   actuals: Actual[]
@@ -19,8 +35,9 @@ interface Props {
 
 export function Stages({ actuals, openStage, onUpsert, base }: Props) {
   const [open, setOpen] = useState<string | undefined>(openStage ?? trip.stages[0].id)
-  const [tracks, setTracks] = useState<Record<string, LatLng[]>>({})
   const [navStage, setNavStage] = useState<Stage | null>(null)
+  const [gpxStage, setGpxStage] = useState<Stage | null>(null)
+  const tracks = useRiddenTracks(actuals)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
@@ -33,20 +50,6 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
   function setRidden(stageId: string, ridden: boolean) {
     const prev = actualFor(actuals, stageId)
     onUpsert({ ...prev, stageId, ridden })
-  }
-
-  async function onGpx(stageId: string, file: File) {
-    const text = await file.text()
-    const d = parseGpxDetailed(text)
-    if (d.track.length) setTracks((t) => ({ ...t, [stageId]: d.track }))
-    const prev = actualFor(actuals, stageId)
-    onUpsert({
-      ...prev,
-      stageId,
-      ridden: true,
-      actualKm: d.km || prev?.actualKm,
-      actualAscent: d.ascent || prev?.actualAscent,
-    })
   }
 
   return (
@@ -84,15 +87,13 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
                     <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} />
                   </div>
 
-                  <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setNavStage(s)}>
-                    <IcRoute size={18} /> Navigation starten
-                  </button>
-
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <a className="btn ghost" href={`${base}${s.gpxUrl}`} download style={{ flex: 1, textDecoration: 'none' }}>
-                      <IcDownload size={18} /> Roadbook
-                    </a>
-                    <GpxUpload stageId={s.id} onGpx={onGpx} />
+                    <button className="btn" style={{ flex: 1 }} onClick={() => setNavStage(s)}>
+                      <IcRoute size={18} /> Navigation
+                    </button>
+                    <button className="btn ghost" style={{ flex: 1 }} onClick={() => setGpxStage(s)}>
+                      <IcMap size={18} /> GPX verwalten
+                    </button>
                   </div>
                 </div>
               )}
@@ -102,27 +103,15 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
       </div>
 
       {navStage && <Navigation stage={navStage} base={base} onClose={() => setNavStage(null)} />}
+      {gpxStage && (
+        <GpxManager
+          stage={gpxStage}
+          actual={actualFor(actuals, gpxStage.id)}
+          base={base}
+          onUpsert={onUpsert}
+          onClose={() => setGpxStage(null)}
+        />
+      )}
     </div>
-  )
-}
-
-function GpxUpload({ stageId, onGpx }: { stageId: string; onGpx: (id: string, f: File) => void }) {
-  const input = useRef<HTMLInputElement>(null)
-  return (
-    <>
-      <button className="btn" style={{ flex: 1 }} onClick={() => input.current?.click()}>
-        <IcUpload size={18} /> Gefahren-GPX
-      </button>
-      <input
-        ref={input}
-        type="file"
-        accept=".gpx,application/gpx+xml,application/xml,text/xml"
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) onGpx(stageId, f)
-          if (input.current) input.current.value = ''
-        }}
-      />
-    </>
   )
 }

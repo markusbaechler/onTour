@@ -43,3 +43,24 @@ export async function uploadPhoto(file: File): Promise<UploadResult> {
     lng: typeof lng === 'number' ? lng : undefined,
   }
 }
+
+const LOCAL_GPX_PREFIX = 'alpes-gpx:'
+
+/**
+ * Laedt ein GPX als resource_type:'raw' zu Cloudinary (gleiches unsigned Preset)
+ * und gibt die secure_url zurueck – so sehen alle Teilnehmenden denselben Track.
+ * Ohne Cloudinary (Demo) wird der GPX-Text lokal unter `local:{key}` gehalten.
+ */
+export async function uploadGpx(file: File, localKey: string): Promise<string> {
+  if (!cloudinaryReady) {
+    try { localStorage.setItem(LOCAL_GPX_PREFIX + localKey, await file.text()) } catch { /* Quota */ }
+    return `local:${localKey}`
+  }
+  const form = new FormData()
+  form.append('file', file)
+  form.append('upload_preset', PRESET!)
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/raw/upload`, { method: 'POST', body: form })
+  if (!res.ok) throw new Error('GPX-Upload fehlgeschlagen')
+  const data = await res.json()
+  return data.secure_url as string
+}

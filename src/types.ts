@@ -28,7 +28,8 @@ export interface Actual {
   actualAscent?: number
   movingTime?: string // "5:12"
   note?: string
-  trackUrl?: string // hochgeladenes GPX der tatsaechlichen Fahrt
+  trackUrl?: string // hochgeladenes GPX der tatsaechlichen Fahrt (Ist)
+  planTrackUrl?: string // optionaler Ersatz fuer das Soll-Roadbook dieser Etappe
 }
 
 export interface Photo {

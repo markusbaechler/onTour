@@ -41,8 +41,15 @@ export async function fetchGpxTrack(url: string): Promise<LatLng[]> {
   }
 }
 
-/** Parst Track inkl. Hoehenmeter (positive ele-Summe) aus GPX-Text. */
-export function parseGpxDetailed(text: string): { track: LatLng[]; ascent: number; km: number } {
+export interface GpxDetail {
+  track: LatLng[]
+  ascent: number
+  km: number
+  name?: string
+}
+
+/** Parst Track inkl. Hoehenmeter (positive ele-Summe) und Name aus GPX-Text. */
+export function parseGpxDetailed(text: string): GpxDetail {
   const doc = new DOMParser().parseFromString(text, 'application/xml')
   if (doc.querySelector('parsererror')) return { track: [], ascent: 0, km: 0 }
   const pts = doc.querySelectorAll('trkpt, rtept')
@@ -61,5 +68,30 @@ export function parseGpxDetailed(text: string): { track: LatLng[]; ascent: numbe
       prevEle = ele
     }
   })
-  return { track, ascent: Math.round(ascent), km: Math.round(trackDistanceKm(track)) }
+  const name = doc.querySelector('metadata > name, trk > name, rte > name')?.textContent?.trim() || undefined
+  return { track, ascent: Math.round(ascent), km: Math.round(trackDistanceKm(track)), name }
+}
+
+const LOCAL_GPX_PREFIX = 'alpes-gpx:'
+
+/** Liest den GPX-Text einer trackUrl: `local:{key}` aus localStorage, sonst per fetch. */
+async function readGpxText(url: string): Promise<string> {
+  if (url.startsWith('local:')) return localStorage.getItem(LOCAL_GPX_PREFIX + url.slice('local:'.length)) ?? ''
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('GPX nicht erreichbar')
+  return res.text()
+}
+
+/** Laedt und parst ein GPX von einer trackUrl (Cloudinary-URL oder `local:`). */
+export async function loadGpxDetailed(url: string): Promise<GpxDetail> {
+  try {
+    return parseGpxDetailed(await readGpxText(url))
+  } catch {
+    return { track: [], ascent: 0, km: 0 }
+  }
+}
+
+/** Entfernt einen lokal gehaltenen GPX-Text (Demo-Modus). */
+export function removeLocalGpx(url?: string) {
+  if (url?.startsWith('local:')) localStorage.removeItem(LOCAL_GPX_PREFIX + url.slice('local:'.length))
 }
