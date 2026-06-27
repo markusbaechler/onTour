@@ -5,24 +5,9 @@ import { dataApiReady, loadData, loadLive, primeLocalData, sendOp, type DataStor
 const LIVE_POLL_MS = 45_000 // Betrachter pollen alle ~45 s
 const FRESH_MS = 15 * 60_000 // < 15 Min = "live"
 
-const demoSeed: DataStore = {
-  actuals: [
-    { stageId: 't1', ridden: true, actualKm: 221, actualAscent: 4050, movingTime: '5:48', note: 'Galibier oben noch Schneewände.' },
-    { stageId: 't2', ridden: true, actualKm: 129, actualAscent: 2810, movingTime: '4:02', note: 'Izoard top, Casse Déserte surreal.' },
-  ],
-  photos: [
-    { id: 'd1', stageId: 't1', url: 'https://picsum.photos/seed/galibier/1200/900', thumbUrl: 'https://picsum.photos/seed/galibier/400/400', author: 'Markus', caption: 'Gipfel Galibier', createdAt: '2026-07-04T11:20:00Z' },
-    { id: 'd2', stageId: 't1', url: 'https://picsum.photos/seed/lacets/1200/900', thumbUrl: 'https://picsum.photos/seed/lacets/400/400', author: 'Alex', caption: 'Kehren', createdAt: '2026-07-04T14:05:00Z' },
-    { id: 'd3', stageId: 't2', url: 'https://picsum.photos/seed/izoard/1200/900', thumbUrl: 'https://picsum.photos/seed/izoard/400/400', author: 'Marco', caption: 'Casse Déserte', createdAt: '2026-07-05T10:40:00Z' },
-  ],
-  comments: [
-    { id: 'c1', photoId: 'd1', author: 'Oma', text: 'Wahnsinn, passt auf euch auf da oben! 😍🙏', createdAt: '2026-07-04T12:10:00Z' },
-  ],
-  reactions: [
-    { photoId: 'd1', author: 'Sandra', emoji: '❤️', createdAt: '2026-07-04T12:00:00Z' },
-    { photoId: 'd1', author: 'Alex', emoji: '🔥', createdAt: '2026-07-04T12:30:00Z' },
-  ],
-}
+// Kein vorbelegter Demo-Inhalt mehr: die Tour startet im echten Zustand
+// (nichts „gefahren", Fotobuch/Soll-Ist leer, bis ihr selbst befuellt).
+const demoSeed: DataStore = { actuals: [], photos: [], comments: [], reactions: [] }
 
 export function actualFor(actuals: Actual[], stageId: string) {
   return actuals.find((a) => a.stageId === stageId)

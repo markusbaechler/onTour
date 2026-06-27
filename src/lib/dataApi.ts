@@ -12,7 +12,7 @@ export interface DataStore {
 export type LiveStore = Record<string, RiderLocation>
 
 const emptyData: DataStore = { actuals: [], photos: [], comments: [], reactions: [] }
-const LS_DATA = 'alpes-data'
+const LS_DATA = 'alpes-data-v2' // v2: alten Demo-Seed (vorbelegte „gefahren"-Etappen) verwerfen
 const LS_LIVE = 'alpes-live'
 
 const readLS = <T,>(k: string, fallback: T): T => {
