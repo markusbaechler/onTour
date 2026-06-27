@@ -86,7 +86,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
 
               {isOpen && (
                 <div style={{ padding: 12, paddingTop: 4 }}>
-                  <MapView stages={[s]} tracks={tracks} height={200} />
+                  <MapView stages={[s]} tracks={tracks} passes={(stats[s.id]?.passes ?? []).map((p) => [p.lat, p.lng] as LatLng)} height={200} />
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '12px 0' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>

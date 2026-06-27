@@ -11,14 +11,20 @@ const startIcon = L.divIcon({
   iconAnchor: [6, 6],
 })
 
-function colIcon(label: string) {
-  return L.divIcon({
-    className: '',
-    html: `<div class="col-marker">${label}</div>`,
-    iconSize: [0, 0],
-    iconAnchor: [0, 18],
-  })
-}
+const endIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:13px;height:13px;border-radius:50%;background:#0E0D11;border:2.5px solid #6BD5E1"></div>',
+  iconSize: [13, 13],
+  iconAnchor: [6.5, 6.5],
+})
+
+// Pass = kleiner Punkt ohne Text (Details stehen in den Etappen-Badges).
+const passIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:7px;height:7px;border-radius:50%;background:#FF8A3D;box-shadow:0 0 0 2px rgba(255,138,61,.22)"></div>',
+  iconSize: [7, 7],
+  iconAnchor: [3.5, 3.5],
+})
 
 function FitBounds({ points }: { points: LatLng[] }) {
   const map = useMap()
@@ -34,16 +40,19 @@ interface Props {
   stages: Stage[]
   /** optionale echte Tracks (z. B. aus hochgeladenem GPX), Key = stageId */
   tracks?: Record<string, LatLng[]>
+  /** Pass-Positionen als dezente Punkte (nur Detail-/Etappenkarte) */
+  passes?: LatLng[]
   height?: number
 }
 
-export function MapView({ stages, tracks, height = 260 }: Props) {
+export function MapView({ stages, tracks, passes, height = 260 }: Props) {
   const lines = useMemo(
     () => stages.map((s) => ({ id: s.id, pts: tracks?.[s.id]?.length ? tracks[s.id] : s.track ?? [s.start, s.end] })),
     [stages, tracks],
   )
   const allPoints = useMemo(() => lines.flatMap((l) => l.pts), [lines])
   const center: LatLng = allPoints[0] ?? [44.7, 6.4]
+  const last = stages[stages.length - 1]
 
   return (
     <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
@@ -56,16 +65,15 @@ export function MapView({ stages, tracks, height = 260 }: Props) {
         {lines.map((l, i) => (
           <Polyline key={l.id} positions={l.pts} pathOptions={{ color: '#FF8A3D', weight: 3, opacity: 0.9 - i * 0.04 }} />
         ))}
+        {/* Etappen-Start/Ziel statt ueberlappender Col-Labels */}
         {stages.map((s) => (
-          <Marker key={s.id} position={s.start} icon={startIcon} />
+          <Marker key={`s-${s.id}`} position={s.start} icon={startIcon} />
         ))}
-        {stages.map((s) =>
-          s.cols.map((c, j) => {
-            const t = tracks?.[s.id]?.length ? tracks[s.id] : s.track ?? [s.start, s.end]
-            const pos = t[Math.min(Math.floor((t.length - 1) * ((j + 1) / (s.cols.length + 1))), t.length - 1)]
-            return <Marker key={`${s.id}-c${j}`} position={pos} icon={colIcon(`${c.altitude} m`)} />
-          }),
-        )}
+        {last && <Marker position={last.end} icon={endIcon} />}
+        {/* Pass-Punkte nur auf der Detailkarte */}
+        {passes?.map((p, i) => (
+          <Marker key={`p-${i}`} position={p} icon={passIcon} />
+        ))}
         <FitBounds points={allPoints} />
       </MapContainer>
     </div>
