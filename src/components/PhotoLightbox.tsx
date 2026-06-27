@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { clock, timeAgo } from '../lib/format'
 import type { Comment, Photo, Reaction } from '../types'
 import { Avatar } from './Avatar'
-import { NamePrompt } from './NamePrompt'
+import { IdentityPicker } from './IdentityPicker'
 import { IcMoodPlus, IcSend, IcSmile, IcX } from './Icons'
 
 const REACTIONS = ['❤️', '🔥', '😮', '😍', '👏', '😂', '🙏', '💪']
@@ -27,8 +27,7 @@ export function PhotoLightbox({
   const [text, setText] = useState('')
   const [picker, setPicker] = useState(false)
   const [emojiBar, setEmojiBar] = useState(false)
-  const [askName, setAskName] = useState(false)
-  const pending = useRef<((name: string) => void) | null>(null)
+  const [switching, setSwitching] = useState(false)
 
   const stageDay = trip.stages.find((s) => s.id === photo.stageId)?.day
   const meta = [photo.caption, stageDay ? `T${stageDay}` : null, clock(photo.createdAt)]
@@ -53,34 +52,18 @@ export function PhotoLightbox({
     [comments, photo.id],
   )
 
-  // Aktion, die einen Namen braucht: vorhanden -> sofort, sonst Name abfragen und danach ausfuehren.
-  function withName(action: (name: string) => void) {
-    if (viewerName) { action(viewerName); return }
-    pending.current = action
-    setAskName(true)
-  }
-
-  function confirmName(t: string) {
-    onChangeName(t)
-    setAskName(false)
-    const next = pending.current
-    pending.current = null
-    next?.(t)
-  }
-
+  // Identitaet ist garantiert gesetzt (Erststart-Picker), daher direkt anwenden.
   function react(emoji: string) {
     setPicker(false)
-    withName((name) => onToggleReaction(photo.id, name, emoji))
+    onToggleReaction(photo.id, viewerName, emoji)
   }
 
   function submit() {
     const body = text.trim()
     if (!body) return
-    withName((name) => {
-      onAddComment({ id: crypto.randomUUID(), photoId: photo.id, author: name, text: body, createdAt: new Date().toISOString() })
-      setText('')
-      setEmojiBar(false)
-    })
+    onAddComment({ id: crypto.randomUUID(), photoId: photo.id, author: viewerName, text: body, createdAt: new Date().toISOString() })
+    setText('')
+    setEmojiBar(false)
   }
 
   return (
@@ -168,17 +151,16 @@ export function PhotoLightbox({
         </div>
 
         <div style={{ fontSize: 11, color: 'var(--mist)', marginTop: 8 }}>
-          {viewerName ? <>Kommentierst als <b style={{ fontWeight: 500 }}>{viewerName}</b> · </> : 'Beim ersten Kommentar fragen wir nach deinem Namen · '}
-          <button onClick={() => { pending.current = null; setAskName(true) }} style={linkBtn}>Name ändern</button>
+          Kommentierst als <b style={{ fontWeight: 500 }}>{viewerName}</b> ·{' '}
+          <button onClick={() => setSwitching(true)} style={linkBtn}>wechseln</button>
         </div>
       </div>
 
-      {askName && (
-        <NamePrompt
-          initial={viewerName}
-          hint="Wird neben deinen Kommentaren und Reaktionen angezeigt."
-          onSave={confirmName}
-          onClose={() => setAskName(false)}
+      {switching && (
+        <IdentityPicker
+          current={viewerName}
+          onPick={(n) => { onChangeName(n); setSwitching(false) }}
+          onClose={() => setSwitching(false)}
         />
       )}
     </div>

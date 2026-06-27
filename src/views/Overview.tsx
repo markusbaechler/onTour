@@ -1,13 +1,23 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { ColBadge } from '../components/ColBadge'
 import { MapView } from '../components/MapView'
-import { IcCheck, IcCircle, IcRoute } from '../components/Icons'
+import { Avatar } from '../components/Avatar'
+import { IdentityPicker } from '../components/IdentityPicker'
+import { IcCheck, IcCircle } from '../components/Icons'
 import { fmt, km, hm, dateRange } from '../lib/format'
 import { actualFor } from '../lib/store'
 import type { Actual } from '../types'
 
-export function Overview({ actuals, onOpenStage }: { actuals: Actual[]; onOpenStage: (id: string) => void }) {
+interface Props {
+  actuals: Actual[]
+  onOpenStage: (id: string) => void
+  viewerName: string
+  onChangeName: (name: string) => void
+}
+
+export function Overview({ actuals, onOpenStage, viewerName, onChangeName }: Props) {
+  const [switching, setSwitching] = useState(false)
   const totals = useMemo(() => {
     const km_ = trip.stages.reduce((s, x) => s + x.plannedKm, 0)
     const hm_ = trip.stages.reduce((s, x) => s + x.plannedAscent, 0)
@@ -19,10 +29,25 @@ export function Overview({ actuals, onOpenStage }: { actuals: Actual[]; onOpenSt
 
   return (
     <div className="view">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 18 }}>
         <span className="eyebrow">{trip.title} · {trip.subtitle}</span>
-        <IcRoute size={20} />
+        <button
+          onClick={() => setSwitching(true)}
+          aria-label="Identität wechseln"
+          style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--ink-2)', border: '0.5px solid var(--slate)', borderRadius: 999, padding: '4px 10px 4px 4px', color: 'var(--snow)', cursor: 'pointer' }}
+        >
+          <Avatar name={viewerName} size={22} />
+          <span style={{ fontSize: 12, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{viewerName}</span>
+        </button>
       </div>
+
+      {switching && (
+        <IdentityPicker
+          current={viewerName}
+          onPick={(n) => { onChangeName(n); setSwitching(false) }}
+          onClose={() => setSwitching(false)}
+        />
+      )}
 
       <h1 className="h1">{trip.title}</h1>
       <p className="muted" style={{ margin: '6px 0 16px' }}>

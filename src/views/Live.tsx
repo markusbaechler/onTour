@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { LiveMap } from '../components/LiveMap'
-import { NamePrompt } from '../components/NamePrompt'
+import { IdentityPicker } from '../components/IdentityPicker'
 import { IcPin } from '../components/Icons'
 import { clock, timeAgo } from '../lib/format'
 import { isFresh } from '../lib/store'
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function Live({ live, viewerName, sharing, geoError, onStartShare, onStopShare, onChangeName }: Props) {
-  const [askName, setAskName] = useState(false)
+  const [switching, setSwitching] = useState(false)
 
   const riders = useMemo(
     () => Object.values(live).sort((a, b) => b.at.localeCompare(a.at)),
@@ -28,9 +28,8 @@ export function Live({ live, viewerName, sharing, geoError, onStartShare, onStop
   const route = useMemo<LatLng[]>(() => trip.stages.flatMap((s) => s.track ?? [s.start, s.end]), [])
 
   function toggle() {
-    if (sharing) { onStopShare(); return }
-    if (viewerName) onStartShare(viewerName)
-    else setAskName(true)
+    if (sharing) onStopShare()
+    else onStartShare(viewerName)
   }
 
   return (
@@ -80,16 +79,14 @@ export function Live({ live, viewerName, sharing, geoError, onStartShare, onStop
 
       {geoError && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 8 }}>{geoError}</div>}
       <div style={{ fontSize: 11, color: 'var(--mist)', marginTop: 8, textAlign: 'center' }}>
-        Standort nur, solange die App geöffnet ist (kein Hintergrund-GPS). · <button onClick={() => setAskName(true)} style={linkBtn}>Name {viewerName ? 'ändern' : 'setzen'}</button>
+        Standort nur, solange die App geöffnet ist (kein Hintergrund-GPS). · <button onClick={() => setSwitching(true)} style={linkBtn}>wechseln</button>
       </div>
 
-      {askName && (
-        <NamePrompt
-          initial={viewerName}
-          title="Dein Fahrername"
-          hint="Wird auf der Karte und in der Liste angezeigt."
-          onSave={(t) => { onChangeName(t); setAskName(false); if (!sharing) onStartShare(t) }}
-          onClose={() => setAskName(false)}
+      {switching && (
+        <IdentityPicker
+          current={viewerName}
+          onPick={(n) => { onChangeName(n); setSwitching(false); if (sharing) { onStopShare(); onStartShare(n) } }}
+          onClose={() => setSwitching(false)}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { Stages } from './views/Stages'
 import { SollIst } from './views/SollIst'
 import { Photobook } from './views/Photobook'
 import { Live } from './views/Live'
+import { IdentityPicker } from './components/IdentityPicker'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare } from './lib/geo'
@@ -23,6 +24,9 @@ export default function App() {
 
   if (!unlocked) return <Gate onUnlock={() => setUnlocked(true)} />
 
+  // Identitaet noch nicht gewaehlt -> einmaliger Erststart-Picker (blockierend).
+  if (!viewer.name) return <IdentityPicker onPick={viewer.setName} />
+
   function openStageInStages(id: string) {
     setOpenStage(id)
     setTab('stages')
@@ -30,7 +34,7 @@ export default function App() {
 
   return (
     <div className="shell">
-      {tab === 'overview' && <Overview actuals={store.actuals} onOpenStage={openStageInStages} />}
+      {tab === 'overview' && <Overview actuals={store.actuals} onOpenStage={openStageInStages} viewerName={viewer.name} onChangeName={viewer.setName} />}
       {tab === 'stages' && <Stages actuals={store.actuals} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
       {tab === 'sollist' && <SollIst actuals={store.actuals} onUpsert={store.upsertActual} />}
       {tab === 'photos' && (

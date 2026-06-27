@@ -47,7 +47,7 @@ export function Photobook({
               </div>
 
               <div style={{ marginBottom: 10 }}>
-                <PhotoUpload stageId={s.id} riders={trip.riders} onAdd={onAdd} />
+                <PhotoUpload stageId={s.id} author={viewerName} onAdd={onAdd} />
               </div>
 
               {ps.length === 0 ? (

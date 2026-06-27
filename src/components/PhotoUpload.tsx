@@ -2,16 +2,17 @@ import { useRef, useState } from 'react'
 import { uploadPhoto, cloudinaryReady } from '../lib/cloudinary'
 import type { Photo } from '../types'
 import { IcCamera } from './Icons'
+import { Avatar } from './Avatar'
 
 interface Props {
   stageId: string
-  riders: string[]
+  /** Gemerkte Identitaet = Foto-Autor (kein Dropdown mehr). */
+  author: string
   onAdd: (p: Photo) => void
 }
 
-export function PhotoUpload({ stageId, riders, onAdd }: Props) {
+export function PhotoUpload({ stageId, author, onAdd }: Props) {
   const input = useRef<HTMLInputElement>(null)
-  const [author, setAuthor] = useState(riders[0])
   const [busy, setBusy] = useState(false)
   const [count, setCount] = useState(0)
 
@@ -43,18 +44,7 @@ export function PhotoUpload({ stageId, riders, onAdd }: Props) {
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <select
-        value={author}
-        onChange={(e) => setAuthor(e.target.value)}
-        style={{
-          background: 'var(--ink-2)', color: 'var(--snow)', border: '0.5px solid var(--slate)',
-          borderRadius: 8, padding: '10px 12px', fontFamily: 'inherit', fontSize: 14,
-        }}
-      >
-        {riders.map((r) => (
-          <option key={r} value={r}>{r}</option>
-        ))}
-      </select>
+      <span title={`Hochladen als ${author}`} style={{ display: 'flex' }}><Avatar name={author} size={30} /></span>
       <button className="btn" disabled={busy} onClick={() => input.current?.click()} style={{ flex: 1 }}>
         <IcCamera size={18} />
         {busy ? `Lädt ${count}…` : 'Fotos hinzufügen'}
