@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { RiddenToggle } from '../components/RiddenToggle'
-import { fmt, km, hm } from '../lib/format'
+import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { actualFor } from '../lib/store'
 import type { Actual } from '../types'
 
@@ -57,23 +57,26 @@ export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {trip.stages.map((s) => {
           const a = actualFor(actuals, s.id)
-          const isEdit = edit === s.id
+          const unlocked = stageUnlocked(trip.startDate, s.day - 1)
+          const isEdit = edit === s.id && unlocked
           return (
             <div key={s.id} className="card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, minWidth: 0 }}>
                   <span className="mono" style={{ color: 'var(--signal)', marginRight: 8 }}>T{s.day}</span>
                   {s.from} → {s.to}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} />
-                  <button
-                    className="pill plan"
-                    style={{ background: 'none', cursor: 'pointer' }}
-                    onClick={() => setEdit(isEdit ? null : s.id)}
-                  >
-                    {isEdit ? 'Fertig' : 'Bearbeiten'}
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} disabled={!unlocked} hint={`erst ab ${stageDate(trip.startDate, s.day - 1)}`} />
+                  {unlocked && (
+                    <button
+                      className="pill plan"
+                      style={{ background: 'none', cursor: 'pointer' }}
+                      onClick={() => setEdit(isEdit ? null : s.id)}
+                    >
+                      {isEdit ? 'Fertig' : 'Bearbeiten'}
+                    </button>
+                  )}
                 </div>
               </div>
 

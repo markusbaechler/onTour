@@ -17,6 +17,21 @@ export function stageDate(startIso: string, dayIndex: number): string {
   return d.toLocaleDateString('de-CH', { weekday: 'short', day: '2-digit', month: '2-digit' })
 }
 
+/** Startdatum einer Etappe als Date (Mitternacht lokal). */
+export function stageStart(startIso: string, dayIndex: number): Date {
+  const d = new Date(startIso)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + dayIndex)
+  return d
+}
+
+/** Etappe ist erst ab ihrem Datum „gefahren"-fähig (Datum <= heute). */
+export function stageUnlocked(startIso: string, dayIndex: number): boolean {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return stageStart(startIso, dayIndex).getTime() <= today.getTime()
+}
+
 export function clock(iso: string): string {
   return new Date(iso).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' })
 }

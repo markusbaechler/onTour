@@ -6,7 +6,7 @@ import { RiddenToggle } from '../components/RiddenToggle'
 import { GpxManager } from '../components/GpxManager'
 import { IcRoute, IcMap } from '../components/Icons'
 import { Navigation } from './Navigation'
-import { km, hm, stageDate } from '../lib/format'
+import { km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
 import type { StageStats } from '../lib/passes'
@@ -67,6 +67,8 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
         {trip.stages.map((s) => {
           const isOpen = open === s.id
           const a = actualFor(actuals, s.id)
+          const unlocked = stageUnlocked(trip.startDate, s.day - 1)
+          const lockHint = `erst ab ${stageDate(trip.startDate, s.day - 1)}`
           return (
             <div key={s.id} ref={(el) => (refs.current[s.id] = el)} className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <button
@@ -90,7 +92,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
                       {(stats[s.id]?.passes ?? s.cols).map((c, i) => <ColBadge key={i} col={c} />)}
                     </div>
-                    <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} />
+                    <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} disabled={!unlocked} hint={lockHint} />
                   </div>
 
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -114,6 +116,8 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
           stage={gpxStage}
           actual={actualFor(actuals, gpxStage.id)}
           base={base}
+          istLocked={!stageUnlocked(trip.startDate, gpxStage.day - 1)}
+          istLockHint={`Gefahren-GPX erst ab ${stageDate(trip.startDate, gpxStage.day - 1)}`}
           onUpsert={onUpsert}
           onClose={() => setGpxStage(null)}
         />

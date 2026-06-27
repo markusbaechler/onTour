@@ -9,11 +9,13 @@ interface Props {
   stage: Stage
   actual?: Actual
   base: string
+  istLocked?: boolean
+  istLockHint?: string
   onUpsert: (a: Actual) => void
   onClose: () => void
 }
 
-export function GpxManager({ stage, actual, base, onUpsert, onClose }: Props) {
+export function GpxManager({ stage, actual, base, istLocked, istLockHint, onUpsert, onClose }: Props) {
   const planUrl = actual?.planTrackUrl ?? `${base}${stage.gpxUrl ?? ''}`
   const istUrl = actual?.trackUrl
   const [planStat, setPlanStat] = useState<GpxDetail | null>(null)
@@ -111,12 +113,16 @@ export function GpxManager({ stage, actual, base, onUpsert, onClose }: Props) {
             <>
               <FileRow name={istName} stat={istStat ?? (actual?.actualKm != null ? { track: [], km: actual.actualKm, ascent: actual.actualAscent ?? 0 } : null)} accent />
               <div style={btnRow}>
-                <button className="btn ghost" style={grow} disabled={busy === 'ist'} onClick={() => istInput.current?.click()}>
+                <button className="btn ghost" style={grow} disabled={busy === 'ist' || istLocked} onClick={() => istInput.current?.click()}>
                   <IcUpload size={17} /> {busy === 'ist' ? 'Lädt…' : 'Ersetzen'}
                 </button>
                 <button className="btn ghost" onClick={removeIst} style={{ color: 'var(--bad)' }}>Entfernen</button>
               </div>
             </>
+          ) : istLocked ? (
+            <div className="muted" style={{ fontSize: 13, padding: '8px 2px', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span aria-hidden="true">🔒</span> {istLockHint ?? 'Noch nicht freigegeben'}
+            </div>
           ) : (
             <button className="btn" style={{ width: '100%' }} disabled={busy === 'ist'} onClick={() => istInput.current?.click()}>
               <IcUpload size={18} /> {busy === 'ist' ? 'Lädt…' : 'Gefahren-GPX hochladen'}
