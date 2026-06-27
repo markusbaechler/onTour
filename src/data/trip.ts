@@ -4,11 +4,11 @@ import type { Trip } from '../types'
 // Routenplaner). plannedKm/plannedAscent + Col-Hoehen sind aus dem GPX berechnet;
 // from/to/Cols entsprechen den Wegpunkten. Frei editierbar.
 export const trip: Trip = {
-  title: 'Alpen',
-  subtitle: 'Tour des Cols',
+  title: 'bbz Cannonball',
+  subtitle: 'Tour de France',
   startDate: '2026-07-04',
   endDate: '2026-07-10',
-  riders: ['Markus', 'Léa', 'Tom'],
+  riders: ['Markus', 'Alex', 'Marco'],
   stages: [
     {
       id: "t1",

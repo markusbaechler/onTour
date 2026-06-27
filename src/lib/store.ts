@@ -12,15 +12,15 @@ const demoSeed: DataStore = {
   ],
   photos: [
     { id: 'd1', stageId: 't1', url: 'https://picsum.photos/seed/galibier/1200/900', thumbUrl: 'https://picsum.photos/seed/galibier/400/400', author: 'Markus', caption: 'Gipfel Galibier', createdAt: '2026-07-04T11:20:00Z' },
-    { id: 'd2', stageId: 't1', url: 'https://picsum.photos/seed/lacets/1200/900', thumbUrl: 'https://picsum.photos/seed/lacets/400/400', author: 'Tom', caption: 'Kehren', createdAt: '2026-07-04T14:05:00Z' },
-    { id: 'd3', stageId: 't2', url: 'https://picsum.photos/seed/izoard/1200/900', thumbUrl: 'https://picsum.photos/seed/izoard/400/400', author: 'Léa', caption: 'Casse Déserte', createdAt: '2026-07-05T10:40:00Z' },
+    { id: 'd2', stageId: 't1', url: 'https://picsum.photos/seed/lacets/1200/900', thumbUrl: 'https://picsum.photos/seed/lacets/400/400', author: 'Alex', caption: 'Kehren', createdAt: '2026-07-04T14:05:00Z' },
+    { id: 'd3', stageId: 't2', url: 'https://picsum.photos/seed/izoard/1200/900', thumbUrl: 'https://picsum.photos/seed/izoard/400/400', author: 'Marco', caption: 'Casse Déserte', createdAt: '2026-07-05T10:40:00Z' },
   ],
   comments: [
     { id: 'c1', photoId: 'd1', author: 'Oma', text: 'Wahnsinn, passt auf euch auf da oben! 😍🙏', createdAt: '2026-07-04T12:10:00Z' },
   ],
   reactions: [
     { photoId: 'd1', author: 'Sandra', emoji: '❤️', createdAt: '2026-07-04T12:00:00Z' },
-    { photoId: 'd1', author: 'Tom', emoji: '🔥', createdAt: '2026-07-04T12:30:00Z' },
+    { photoId: 'd1', author: 'Alex', emoji: '🔥', createdAt: '2026-07-04T12:30:00Z' },
   ],
 }
 
