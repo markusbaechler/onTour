@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
+import { RiddenToggle } from '../components/RiddenToggle'
 import { fmt, km, hm } from '../lib/format'
 import { actualFor } from '../lib/store'
 import type { Actual } from '../types'
@@ -17,6 +18,11 @@ function Delta({ planned, actual, unit }: { planned: number; actual?: number; un
 
 export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a: Actual) => void }) {
   const [edit, setEdit] = useState<string | null>(null)
+
+  const setRidden = (stageId: string, ridden: boolean) => {
+    const prev = actualFor(actuals, stageId)
+    onUpsert({ ...prev, stageId, ridden })
+  }
 
   const totals = useMemo(() => {
     const pKm = trip.stages.reduce((s, x) => s + x.plannedKm, 0)
@@ -59,13 +65,16 @@ export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a
                   <span className="mono" style={{ color: 'var(--signal)', marginRight: 8 }}>T{s.day}</span>
                   {s.from} → {s.to}
                 </div>
-                <button
-                  className="pill plan"
-                  style={{ background: 'none', cursor: 'pointer' }}
-                  onClick={() => setEdit(isEdit ? null : s.id)}
-                >
-                  {isEdit ? 'Fertig' : 'Bearbeiten'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} />
+                  <button
+                    className="pill plan"
+                    style={{ background: 'none', cursor: 'pointer' }}
+                    onClick={() => setEdit(isEdit ? null : s.id)}
+                  >
+                    {isEdit ? 'Fertig' : 'Bearbeiten'}
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', fontSize: 13 }}>

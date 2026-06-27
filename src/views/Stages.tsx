@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { trip } from '../data/trip'
 import { ColBadge } from '../components/ColBadge'
 import { MapView } from '../components/MapView'
+import { RiddenToggle } from '../components/RiddenToggle'
 import { IcDownload, IcUpload, IcRoute } from '../components/Icons'
 import { Navigation } from './Navigation'
 import { km, hm, stageDate } from '../lib/format'
@@ -28,6 +29,11 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
       refs.current[openStage]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [openStage])
+
+  function setRidden(stageId: string, ridden: boolean) {
+    const prev = actualFor(actuals, stageId)
+    onUpsert({ ...prev, stageId, ridden })
+  }
 
   async function onGpx(stageId: string, file: File) {
     const text = await file.text()
@@ -71,8 +77,11 @@ export function Stages({ actuals, openStage, onUpsert, base }: Props) {
                 <div style={{ padding: 12, paddingTop: 4 }}>
                   <MapView stages={[s]} tracks={tracks} height={200} />
 
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '12px 0' }}>
-                    {s.cols.map((c) => <ColBadge key={c.name} col={c} />)}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '12px 0' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
+                      {s.cols.map((c) => <ColBadge key={c.name} col={c} />)}
+                    </div>
+                    <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} />
                   </div>
 
                   <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setNavStage(s)}>
