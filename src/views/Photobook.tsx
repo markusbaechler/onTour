@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
-import { PhotoUpload } from '../components/PhotoUpload'
+import { PhotoUploadSheet } from '../components/PhotoUploadSheet'
 import { PhotoLightbox } from '../components/PhotoLightbox'
 import { StoryCircles, type StoryGroup } from '../components/StoryCircles'
 import { PhotoTimelineMap } from '../components/PhotoTimelineMap'
 import { BlurImage } from '../components/BlurImage'
 import { IcCamera } from '../components/Icons'
+import { cloudinaryReady } from '../lib/cloudinary'
 import { stageDate } from '../lib/format'
 import type { Comment, Photo, Reaction } from '../types'
 
@@ -40,6 +41,7 @@ export function Photobook({
 }: Props) {
   const [storyStart, setStoryStart] = useState<string | null>(null)
   const [mode, setMode] = useState<'mosaic' | 'map'>('mosaic')
+  const [uploadStage, setUploadStage] = useState<string | null>(null)
 
   // Etappen mit ihren Fotos (chronologisch); Lese-/Story-Reihenfolge = Etappen -> Zeit.
   const byStage = useMemo(
@@ -70,8 +72,9 @@ export function Photobook({
           ))}
         </div>
       </div>
-      <p className="muted" style={{ margin: '6px 0 16px', fontSize: 13 }}>
-        {loading ? 'lädt…' : `${total} ${total === 1 ? 'Bild' : 'Bilder'} · alle ${trip.riders.length} laden hoch`}
+      <p className="muted" style={{ margin: '6px 0 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>{loading ? 'lädt…' : `${total} ${total === 1 ? 'Bild' : 'Bilder'} · alle ${trip.riders.length} laden hoch`}</span>
+        {!cloudinaryReady && <span className="pill plan" style={{ fontSize: 9, padding: '1px 6px' }}>Demo</span>}
       </p>
 
       {loading ? (
@@ -89,24 +92,20 @@ export function Photobook({
               <PhotoTimelineMap photos={ordered} onOpen={(id) => setStoryStart(id)} />
             )
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {byStage.map(({ stage: s, photos: ps }) => (
                 <section key={s.id}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: ps.length ? 10 : 6 }}>
                     <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 13 }}>T{s.day}</span>
                     <span style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.from} → {s.to}</span>
                     <span className="mono muted" style={{ fontSize: 11, marginLeft: 'auto', flexShrink: 0 }}>{stageDate(trip.startDate, s.day - 1)}</span>
                   </div>
 
-                  <div style={{ marginBottom: 10 }}>
-                    <PhotoUpload stageId={s.id} author={viewerName} onAdd={onAdd} onAddLocal={onAddLocal} />
-                  </div>
-
                   {ps.length === 0 ? (
-                    <div className="empty" style={{ padding: '18px', border: '0.5px dashed var(--slate)', borderRadius: 12 }}>
-                      <IcCamera size={22} />
-                      <div style={{ fontSize: 13, marginTop: 6 }}>Noch keine Bilder von dieser Etappe.</div>
-                    </div>
+                    <button onClick={() => setUploadStage(s.id)} style={emptyRow}>
+                      <span className="muted" style={{ fontSize: 13 }}>Noch keine Bilder</span>
+                      <span style={{ marginLeft: 'auto', color: 'var(--signal)', fontSize: 13, fontWeight: 500 }}>+ hinzufügen</span>
+                    </button>
                   ) : (
                     <div className="mosaic">
                       {ps.map((p, i) => {
@@ -129,6 +128,22 @@ export function Photobook({
         </>
       )}
 
+      {!loading && !error && (
+        <button className="fab" onClick={() => setUploadStage(trip.stages[0].id)} aria-label="Fotos hinzufügen">
+          <IcCamera size={20} /> Fotos
+        </button>
+      )}
+
+      {uploadStage && (
+        <PhotoUploadSheet
+          author={viewerName}
+          defaultStageId={uploadStage}
+          onAdd={onAdd}
+          onAddLocal={onAddLocal}
+          onClose={() => setUploadStage(null)}
+        />
+      )}
+
       {storyStart && (
         <PhotoLightbox
           photos={ordered}
@@ -145,6 +160,13 @@ export function Photobook({
       )}
     </div>
   )
+}
+
+const emptyRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', width: '100%',
+  padding: '10px 12px', background: 'transparent',
+  border: '0.5px solid var(--slate)', borderRadius: 10,
+  cursor: 'pointer', color: 'var(--snow)', textAlign: 'left',
 }
 
 function EmptyHint() {

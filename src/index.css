@@ -133,6 +133,21 @@ button.row:active { transform: scale(0.995); }
 .nav button.active { color: var(--signal); }
 .nav button svg { width: 22px; height: 22px; }
 
+/* Floating-Action-Button (zentraler Foto-Upload, ueber der Bottom-Nav) */
+.fab {
+  position: fixed; z-index: 60;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  right: max(16px, calc((100vw - var(--shell)) / 2 + 16px));
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 18px; border: none; border-radius: 999px; cursor: pointer;
+  background: var(--signal); color: #1a0e04; font-weight: 700; font-size: 14px;
+  box-shadow: 0 6px 22px rgba(255, 138, 61, .4), 0 2px 6px rgba(0, 0, 0, .45);
+  transition: transform .12s ease, box-shadow .15s ease;
+}
+.fab:hover { box-shadow: 0 8px 26px rgba(255, 138, 61, .5), 0 2px 6px rgba(0, 0, 0, .45); }
+.fab:active { transform: scale(.95); }
+@media (prefers-reduced-motion: reduce) { .fab { transition: none; } }
+
 /* Pills / Badges */
 .pill {
   display: inline-flex; align-items: center; gap: 5px;
