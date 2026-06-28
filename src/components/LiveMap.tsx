@@ -12,12 +12,13 @@ function riderIcon(loc: RiderLocation) {
   const color = fresh ? '#FF8A3D' : '#6b6976'
   const labelColor = fresh ? '#FF8A3D' : '#8A8896'
   const label = fresh ? timeAgo(loc.at) : clock(loc.at)
-  const glow = fresh ? 'box-shadow:0 0 0 4px rgba(255,138,61,.25);' : ''
   return L.divIcon({
     className: '',
     html: `<div style="display:flex;flex-direction:column;align-items:center">
-      <div style="width:26px;height:26px;border-radius:50%;background:${color};color:#0E0D11;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;${glow}">${avatarInitial(loc.rider)}</div>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${labelColor};margin-top:2px;background:rgba(14,13,17,.8);padding:1px 4px;border-radius:4px;white-space:nowrap">${label}</span>
+      <div class="${fresh ? 'live-pulse' : ''}" style="position:relative;width:26px;height:26px">
+        <div style="position:relative;z-index:1;width:26px;height:26px;border-radius:50%;background:${color};color:#0E0D11;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border:2px solid #0E0D11">${avatarInitial(loc.rider)}</div>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${labelColor};margin-top:3px;background:rgba(14,13,17,.8);padding:1px 4px;border-radius:4px;white-space:nowrap">${label}</span>
     </div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],

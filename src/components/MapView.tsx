@@ -62,8 +62,12 @@ export function MapView({ stages, tracks, passes, height = 260 }: Props) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           maxZoom={19}
         />
+        {/* dezenter Glow unter der Route */}
+        {lines.map((l) => (
+          <Polyline key={`g-${l.id}`} positions={l.pts} pathOptions={{ color: '#FF8A3D', weight: 8, opacity: 0.14, lineCap: 'round', lineJoin: 'round' }} />
+        ))}
         {lines.map((l, i) => (
-          <Polyline key={l.id} positions={l.pts} pathOptions={{ color: '#FF8A3D', weight: 3, opacity: 0.9 - i * 0.04 }} />
+          <Polyline key={`m-${l.id}`} positions={l.pts} pathOptions={{ color: '#FF8A3D', weight: 2.5, opacity: 0.95 - i * 0.03, lineCap: 'round', lineJoin: 'round' }} />
         ))}
         {/* Etappen-Start/Ziel statt ueberlappender Col-Labels */}
         {stages.map((s) => (
