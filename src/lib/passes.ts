@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { trip } from '../data/trip'
-import { parseGpxProfile, parseGpxWaypoints, type ProfilePt, type Waypoint } from './gpx'
+import { passNames } from '../data/passNames'
+import { parseGpxProfile, type ProfilePt } from './gpx'
 
-// Justierbare Schwellen der Pass-Erkennung (kalibriert auf ~48 Paesse, Referenz Routenplaner).
-export const PASS_MIN_ALTITUDE = 700 // m – tieferes Maximum gilt nicht als Pass
-export const PASS_MIN_PROMINENCE = 40 // m – Mindest-Auf-/Abstieg um das Maximum
-export const PASS_MIN_GAP_M = 1000 // m – Mindestabstand zwischen zwei Paessen
+// Pass = die Route kreuzt einen benannten Pass aus dem Gazetteer (src/data/passNames.ts,
+// OSM mountain_pass/saddle). PASS_CROSS_THRESHOLD justiert die Trefferzahl (~48).
+export const PASS_CROSS_THRESHOLD = 350 // m – bis hierher gilt ein Pass als gekreuzt
 const SMOOTH_WINDOW = 3 // Glaettung des Hoehenprofils gegen GPS-Rauschen
-const NAME_RADIUS_M = 1500 // bis hierhin wird ein Wegpunkt-Name uebernommen
 export const CURVE_MIN_ANGLE = 35 // Grad – ab diesem Richtungswechsel zaehlt es als Kurve
 const CURVE_MIN_STEP_M = 70 // Mindestabstand zwischen Kurven-Messpunkten (gegen Rauschen)
 const PROFILE_SAMPLES = 180 // Punkte des downgesampleten Hoehenprofils
@@ -17,7 +16,7 @@ export interface Pass {
   lat: number
   lng: number
   distFromStart: number
-  name?: string
+  name: string
 }
 /** Downgesampletes Hoehenprofil fuer Sparklines/Charts: d = Meter ab Start, e = Hoehe. */
 export interface ProfilePoint { d: number; e: number }
@@ -56,52 +55,31 @@ function smoothEle(pts: ProfilePt[], w: number): number[] {
 }
 
 /**
- * Erkennt Paesse aus dem Hoehenprofil: lokale Maxima >= PASS_MIN_ALTITUDE, die von
- * einem Auf- und einem Abstieg von je >= PASS_MIN_PROMINENCE eingerahmt sind
- * (Hill-Segmentierung). Anschliessend Mindestabstand (hoeheren Pass behalten).
- * Pass-Anzahl, hoechster Punkt und Anstieg stammen alle aus demselben GPX.
+ * Pass-Erkennung: die Route kreuzt einen benannten Pass (Gazetteer aus OSM) innerhalb
+ * PASS_CROSS_THRESHOLD. So sind alle Paesse echt benannt. Hoechster Punkt, Anstieg und
+ * Hoehenprofil stammen aus dem GPX.
  */
-export function analyzeStage(profile: ProfilePt[], waypoints: Waypoint[]): StageStats {
+export function analyzeStage(profile: ProfilePt[]): StageStats {
   if (profile.length < 2) return { passes: [], highest: 0, ascent: 0, km: 0, profile: [], curves: 0 }
   const ele = smoothEle(profile, SMOOTH_WINDOW)
   const cum = [0]
   for (let i = 1; i < profile.length; i++) cum.push(cum[i - 1] + meters(profile[i - 1].lat, profile[i - 1].lng, profile[i].lat, profile[i].lng))
 
-  const raw: number[] = []
-  let up = true, valley = ele[0], peakE = ele[0], peakI = 0, lastV = ele[0]
-  for (let i = 1; i < ele.length; i++) {
-    const e = ele[i]
-    if (up) {
-      if (e >= peakE) { peakE = e; peakI = i }
-      else if (peakE - e >= PASS_MIN_PROMINENCE) {
-        if (peakE >= PASS_MIN_ALTITUDE && peakE - lastV >= PASS_MIN_PROMINENCE) raw.push(peakI)
-        up = false; valley = e
-      }
-    } else {
-      if (e <= valley) valley = e
-      else if (e - valley >= PASS_MIN_PROMINENCE) { lastV = valley; up = true; peakE = e; peakI = i }
+  // Benannte Paesse, deren naechster Routenpunkt < PASS_CROSS_THRESHOLD liegt
+  const passes: Pass[] = []
+  const usedNames = new Set<string>()
+  for (const gp of passNames) {
+    let best = PASS_CROSS_THRESHOLD, bi = -1
+    for (let i = 0; i < profile.length; i++) {
+      const d = meters(gp.lat, gp.lng, profile[i].lat, profile[i].lng)
+      if (d < best) { best = d; bi = i }
+    }
+    if (bi >= 0 && !usedNames.has(gp.name)) {
+      usedNames.add(gp.name)
+      passes.push({ name: gp.name, lat: gp.lat, lng: gp.lng, altitude: gp.ele || Math.round(ele[bi]), distFromStart: Math.round(cum[bi]) })
     }
   }
-
-  // Mindestabstand: bei zwei nahen Maxima das hoehere behalten
-  raw.sort((a, b) => cum[a] - cum[b])
-  const kept: number[] = []
-  for (const i of raw) {
-    const nIdx = kept.findIndex((k) => Math.abs(cum[k] - cum[i]) < PASS_MIN_GAP_M)
-    if (nIdx < 0) kept.push(i)
-    else if (ele[i] > ele[kept[nIdx]]) kept[nIdx] = i
-  }
-
-  const passes: Pass[] = kept.map((i) => {
-    const p = profile[i]
-    let name: string | undefined
-    let best = NAME_RADIUS_M
-    for (const w of waypoints) {
-      const d = meters(p.lat, p.lng, w.lat, w.lng)
-      if (d < best) { best = d; name = w.name }
-    }
-    return { altitude: Math.round(ele[i]), lat: p.lat, lng: p.lng, distFromStart: Math.round(cum[i]), name }
-  })
+  passes.sort((a, b) => a.distFromStart - b.distFromStart)
 
   let ascent = 0
   for (let i = 1; i < ele.length; i++) if (ele[i] > ele[i - 1]) ascent += ele[i] - ele[i - 1]
@@ -141,7 +119,7 @@ export function useStageStats(base: string): Record<string, StageStats> {
     Promise.all(trip.stages.map(async (s) => {
       try {
         const text = await (await fetch(`${base}${s.gpxUrl}`)).text()
-        return [s.id, analyzeStage(parseGpxProfile(text), parseGpxWaypoints(text))] as const
+        return [s.id, analyzeStage(parseGpxProfile(text))] as const
       } catch {
         return [s.id, { passes: [], highest: 0, ascent: s.plannedAscent, km: s.plannedKm, profile: [], curves: 0 }] as const
       }
