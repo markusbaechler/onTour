@@ -3,6 +3,7 @@ import { MapContainer, Polyline, Marker, AttributionControl, useMap } from 'reac
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { DarkReliefTiles } from './MapTiles'
+import { MapGestures } from './MapGestures'
 import { clock, timeAgo } from '../lib/format'
 import { isFresh } from '../lib/store'
 import { avatarInitial } from '../lib/viewer'
@@ -51,6 +52,7 @@ export function LiveMap({ riders, route = [], height = 228 }: Props) {
     <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
       <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl={false}>
         <AttributionControl prefix={false} position="bottomright" />
+        <MapGestures />
         <DarkReliefTiles />
         {route.length > 1 && <Polyline positions={route} pathOptions={{ color: '#2a2935', weight: 4 }} />}
         {riders.map((r) => (

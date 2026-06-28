@@ -3,6 +3,7 @@ import { MapContainer, Polyline, Marker, AttributionControl, useMap } from 'reac
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { DarkReliefTiles } from './MapTiles'
+import { MapGestures } from './MapGestures'
 import type { LatLng, Stage } from '../types'
 
 const startIcon = L.divIcon({
@@ -91,6 +92,7 @@ export function MapView({ stages, tracks, passes, highlight, height = 260 }: Pro
     <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
       <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl={false}>
         <AttributionControl prefix={false} position="bottomright" />
+        <MapGestures />
         <DarkReliefTiles />
         {/* dezenter Glow unter der Route */}
         {lines.map((l) => (

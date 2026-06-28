@@ -3,6 +3,7 @@ import { MapContainer, Marker, Polyline, AttributionControl, useMap } from 'reac
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { DarkReliefTiles } from './MapTiles'
+import { MapGestures } from './MapGestures'
 import { trip } from '../data/trip'
 import type { LatLng, Photo } from '../types'
 
@@ -42,6 +43,7 @@ export function PhotoTimelineMap({ photos, onOpen, height = 360 }: { photos: Pho
     <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
       <MapContainer center={center} zoom={8} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl={false}>
         <AttributionControl prefix={false} position="bottomright" />
+        <MapGestures />
         <DarkReliefTiles />
         {positions.length > 1 && <Polyline positions={positions} pathOptions={{ color: '#FF8A3D', weight: 2, opacity: 0.5, dashArray: '4 5' }} />}
         {ordered.map((p, i) => (
