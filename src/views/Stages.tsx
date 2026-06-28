@@ -41,6 +41,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [navStage, setNavStage] = useState<Stage | null>(null)
   const [gpxStage, setGpxStage] = useState<Stage | null>(null)
   const [profileStage, setProfileStage] = useState<Stage | null>(null)
+  const [highlight, setHighlight] = useState<LatLng | null>(null)
   const tracks = useRiddenTracks(actuals)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -76,7 +77,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
               <button
                 className="row"
                 style={{ border: 'none', borderRadius: 0, background: 'transparent' }}
-                onClick={() => setOpen(isOpen ? undefined : s.id)}
+                onClick={() => { setOpen(isOpen ? undefined : s.id); setHighlight(null) }}
               >
                 <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 12 }}>T{s.day}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -99,7 +100,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                     </div>
 
                     {/* Karte */}
-                    <MapView stages={[s]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} height={190} />
+                    <MapView stages={[s]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} highlight={highlight} height={190} />
 
                     {/* Kennzahlenzeile */}
                     <div style={{ display: 'flex', gap: 6, margin: '12px 0' }}>
@@ -109,15 +110,28 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                       <div className="stat" style={statCell}><div className="num" style={{ ...numStyle, color: 'var(--signal)' }}>{passes.length}</div><div className="lbl">Pässe</div></div>
                     </div>
 
-                    {/* Cols als aufgeraeumte Liste */}
+                    {/* Cols als aufgeraeumte Liste – Klick laesst den Punkt auf der Karte leuchten */}
                     {passList && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                        {passList.map((p, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <ColBadge col={p} />
-                            <span className="mono muted" style={{ fontSize: 11, marginLeft: 'auto' }}>bei {fmt(p.distFromStart / 1000)} km</span>
-                          </div>
-                        ))}
+                        {passList.map((p, i) => {
+                          const active = !!highlight && highlight[0] === p.lat && highlight[1] === p.lng
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setHighlight(active ? null : [p.lat, p.lng])}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+                                background: active ? 'rgba(255,138,61,.10)' : 'transparent',
+                                border: active ? '0.5px solid var(--signal-dim)' : '0.5px solid transparent',
+                                borderRadius: 8, padding: '4px 6px', cursor: 'pointer', color: 'var(--snow)',
+                                transition: 'background .15s ease, border-color .15s ease',
+                              }}
+                            >
+                              <ColBadge col={p} />
+                              <span className="mono muted" style={{ fontSize: 11, marginLeft: 'auto' }}>bei {fmt(p.distFromStart / 1000)} km</span>
+                            </button>
+                          )
+                        })}
                       </div>
                     )}
 

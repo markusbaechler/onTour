@@ -158,8 +158,10 @@ button.row:active { transform: scale(0.995); }
    Context, sonst lecken sie in den Root und liegen ueber Overlays (Lightbox,
    NamePrompt, Navigation). */
 .leaflet-container { background: var(--ink-2); font-family: var(--font-body); isolation: isolate; }
-/* dezentes Hoehenrelief ueber der dunklen Karte (Berge sichtbar) */
-.hillshade { mix-blend-mode: soft-light; }
+/* Hoehenrelief ueber der Karte (Berge sichtbar, mehr Pop) */
+.hillshade { mix-blend-mode: overlay; }
+/* dunkle Basiskacheln etwas aufhellen, damit die Karte nicht zu duester wirkt */
+.map-bright { filter: brightness(1.35) saturate(1.2) contrast(1.05); }
 /* Quellverweis dezent: klein, transparent, ohne Flagge/Leaflet-Branding */
 .leaflet-control-attribution {
   background: rgba(14, 13, 17, .5) !important;
@@ -210,6 +212,18 @@ input[type="file"] { display: none; }
   animation: livePulse 1.9s ease-out infinite; z-index: 0;
 }
 @keyframes livePulse { 0% { transform: scale(.5); opacity: .5; } 80%, 100% { transform: scale(2.4); opacity: 0; } }
+
+/* Hervorgehobener Pass auf der Karte: leuchtet (weiss-heisser Kern) + pulsiert */
+.map-pass-glow { position: relative; width: 24px; height: 24px; }
+.map-pass-glow .core {
+  position: absolute; inset: 7px; border-radius: 50%; background: #fff; z-index: 1;
+  box-shadow: 0 0 6px 2px #FFB870, 0 0 14px 5px rgba(255, 138, 61, .95), 0 0 30px 13px rgba(255, 138, 61, .55);
+}
+.map-pass-glow::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 24px; height: 24px;
+  margin: -12px 0 0 -12px; border-radius: 50%; background: var(--signal);
+  animation: livePulse 1.6s ease-out infinite; z-index: 0;
+}
 
 /* Bottom-Sheet (Profil-Modal) */
 .sheet-up { animation: sheetUp .26s ease; }

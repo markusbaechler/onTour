@@ -9,13 +9,14 @@ export function DarkReliefTiles() {
     <>
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+        className="map-bright"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         maxZoom={19}
       />
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
         className="hillshade"
-        opacity={0.35}
+        opacity={0.55}
         maxNativeZoom={14}
         maxZoom={19}
         attribution="Esri"

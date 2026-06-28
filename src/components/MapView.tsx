@@ -27,13 +27,32 @@ const passIcon = L.divIcon({
   iconAnchor: [3.5, 3.5],
 })
 
-function FitBounds({ points }: { points: LatLng[] }) {
+// Hervorgehobener Pass: leuchtet + pulsiert (beim Klick in der Liste).
+const glowIcon = L.divIcon({
+  className: '',
+  html: '<div class="map-pass-glow"><div class="core"></div></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+})
+
+function FitBounds({ points, sig }: { points: LatLng[]; sig: string }) {
   const map = useMap()
   useEffect(() => {
     if (points.length === 0) return
     const b = L.latLngBounds(points.map((p) => L.latLng(p[0], p[1])))
     map.fitBounds(b, { padding: [28, 28] })
-  }, [map, points])
+    // sig (Etappen-Inhalt) als Dep: laeuft nur bei echter Routenaenderung,
+    // damit ein flyTo zum hervorgehobenen Pass nicht zurueckgesetzt wird.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, sig])
+  return null
+}
+
+function PanTo({ pos }: { pos?: LatLng | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (pos) map.flyTo(pos, Math.max(map.getZoom(), 10), { duration: 0.6 })
+  }, [map, pos])
   return null
 }
 
@@ -43,15 +62,18 @@ interface Props {
   tracks?: Record<string, LatLng[]>
   /** Pass-Positionen als dezente Punkte (nur Detail-/Etappenkarte) */
   passes?: LatLng[]
+  /** hervorgehobener Pass (leuchtet + Karte pant dorthin) */
+  highlight?: LatLng | null
   height?: number
 }
 
-export function MapView({ stages, tracks, passes, height = 260 }: Props) {
+export function MapView({ stages, tracks, passes, highlight, height = 260 }: Props) {
   const lines = useMemo(
     () => stages.map((s) => ({ id: s.id, pts: tracks?.[s.id]?.length ? tracks[s.id] : s.track ?? [s.start, s.end] })),
     [stages, tracks],
   )
   const allPoints = useMemo(() => lines.flatMap((l) => l.pts), [lines])
+  const fitSig = lines.map((l) => `${l.id}:${l.pts.length}`).join('|')
   const center: LatLng = allPoints[0] ?? [44.7, 6.4]
   const last = stages[stages.length - 1]
 
@@ -76,7 +98,9 @@ export function MapView({ stages, tracks, passes, height = 260 }: Props) {
         {passes?.map((p, i) => (
           <Marker key={`p-${i}`} position={p} icon={passIcon} />
         ))}
-        <FitBounds points={allPoints} />
+        {highlight && <Marker position={highlight} icon={glowIcon} zIndexOffset={1000} />}
+        <FitBounds points={allPoints} sig={fitSig} />
+        <PanTo pos={highlight} />
       </MapContainer>
     </div>
   )
