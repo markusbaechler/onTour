@@ -40,7 +40,7 @@ function seg(active: boolean, kind: 'geplant' | 'gefahren'): React.CSSProperties
     fontSize: 11,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    padding: '5px 13px',
+    padding: '9px 14px',
     borderRadius: 999,
     border: 'none',
     cursor: 'pointer',

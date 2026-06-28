@@ -5,7 +5,7 @@
   --ink-2: #1C1B22;
   --slate: #26252E;
   --slate-strong: #34323D;
-  --mist: #8A8896;
+  --mist: #A8A6B2;   /* angehoben fuer Sonnenlicht-Lesbarkeit (Kontrast >= 7:1, WCAG AA/AAA) */
   --snow: #F2F1F5;
   --signal: #FF8A3D;   /* Amber \u2013 Headlight / Blinker */
   --signal-dim: #c9a06a;
@@ -123,8 +123,8 @@ button.row:active { transform: scale(0.995); }
 }
 .nav button {
   flex: 1; background: none; border: none; color: var(--mist);
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font-size: 11px; padding: 6px 0; border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-size: 11px; padding: 6px 0; min-height: 52px; border-radius: var(--radius-sm);
   transition: color .15s ease;
 }
 .nav button.active { color: var(--signal); }
@@ -145,6 +145,7 @@ button.row:active { transform: scale(0.995); }
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   background: var(--signal); color: #1a0e04; font-weight: 600;
   border: none; border-radius: var(--radius-sm); padding: 11px 16px; font-size: 14px;
+  min-height: 48px; /* Tap-Ziel draussen am Bike */
 }
 .btn.ghost { background: none; color: var(--snow); border: 0.5px solid var(--slate-strong); }
 .btn:disabled { opacity: .5; }
@@ -208,4 +209,13 @@ input[type="file"] { display: none; }
   .skeleton { animation: none; }
   .blurup { transition: none; }
   .mosaic > *:active .blurup.ready { transform: none; }
+
+  /* Global: jede Animation/Transition abschalten – auch Inline-Transitions
+     (z. B. Heading-up-Drehung der Navi-Karte, Toggle-Knoepfe). */
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

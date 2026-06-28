@@ -198,7 +198,8 @@ const progRow: React.CSSProperties = {
   display: 'flex', gap: 3, maxWidth: 'var(--shell)', margin: '0 auto', padding: '0 16px',
 }
 const closeBtn: React.CSSProperties = {
-  position: 'fixed', top: 16, right: 14, zIndex: 3, background: 'none', border: 'none', color: 'var(--snow)',
+  position: 'fixed', top: 6, right: 6, zIndex: 3, background: 'none', border: 'none', color: 'var(--snow)',
+  padding: 10, display: 'flex', // groesseres Tap-Ziel
 }
 const image: React.CSSProperties = {
   width: '100%', maxHeight: '56vh', objectFit: 'contain', display: 'block',
@@ -216,13 +217,13 @@ const chev: React.CSSProperties = {
   width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
 }
 function chip(active: boolean): React.CSSProperties {
-  return { display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--ink-2)', border: `0.5px solid ${active ? 'rgba(255,138,61,.5)' : 'var(--slate)'}`, borderRadius: 999, padding: '4px 10px', fontSize: 13, color: 'var(--snow)', cursor: 'pointer' }
+  return { display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--ink-2)', border: `0.5px solid ${active ? 'rgba(255,138,61,.5)' : 'var(--slate)'}`, borderRadius: 999, padding: '8px 12px', fontSize: 14, color: 'var(--snow)', cursor: 'pointer' }
 }
 const popover: React.CSSProperties = { position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, zIndex: 2, display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 240, background: 'var(--ink-raised)', border: '0.5px solid var(--slate)', borderRadius: 12, padding: 8 }
-const popEmoji: React.CSSProperties = { background: 'none', border: 'none', fontSize: 20, lineHeight: 1, padding: 4, cursor: 'pointer' }
+const popEmoji: React.CSSProperties = { background: 'none', border: 'none', fontSize: 22, lineHeight: 1, padding: 8, cursor: 'pointer' }
 const inputBar: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--ink-raised)', border: '0.5px solid var(--slate)', borderRadius: 999 }
 const textInput: React.CSSProperties = { flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none', color: 'var(--snow)', fontSize: 13, fontFamily: 'var(--font-body)' }
 function iconBtn(color: string, disabled = false): React.CSSProperties {
-  return { background: 'none', border: 'none', color, padding: 0, display: 'flex', opacity: disabled ? 0.4 : 1, cursor: disabled ? 'default' : 'pointer' }
+  return { background: 'none', border: 'none', color, padding: 7, display: 'flex', opacity: disabled ? 0.4 : 1, cursor: disabled ? 'default' : 'pointer' }
 }
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--mist)', textDecoration: 'underline', padding: 0, fontSize: 11, cursor: 'pointer' }

@@ -166,7 +166,7 @@ export function Navigation({ stage, passes, base, onClose }: Props) {
         {/* Modus-Umschalter */}
         <div style={{ position: 'absolute', bottom: 10, right: 12, zIndex: 4, display: 'flex', background: 'rgba(14,13,17,.78)', border: '0.5px solid var(--slate)', borderRadius: 8, overflow: 'hidden' }}>
           {(['gps', 'sim'] as RideMode[]).map((m) => (
-            <button key={m} onClick={() => setMode(m)} className="mono" style={{ background: mode === m ? 'var(--signal)' : 'transparent', color: mode === m ? '#1a0e04' : 'var(--mist)', border: 'none', fontSize: 10, padding: '5px 9px', cursor: 'pointer' }}>
+            <button key={m} onClick={() => setMode(m)} className="mono" style={{ background: mode === m ? 'var(--signal)' : 'transparent', color: mode === m ? '#1a0e04' : 'var(--mist)', border: 'none', fontSize: 11, padding: '9px 12px', cursor: 'pointer' }}>
               {m === 'gps' ? 'GPS' : 'Demo'}
             </button>
           ))}
@@ -241,8 +241,8 @@ const overlay: React.CSSProperties = {
 }
 const hudBtn: React.CSSProperties = {
   position: 'absolute', top: 12, left: 12, zIndex: 4,
-  background: 'rgba(14,13,17,.78)', border: '0.5px solid var(--slate)', borderRadius: 8,
-  color: 'var(--snow)', padding: 6, display: 'flex', cursor: 'pointer',
+  background: 'rgba(14,13,17,.78)', border: '0.5px solid var(--slate)', borderRadius: 10,
+  color: 'var(--snow)', padding: 10, display: 'flex', cursor: 'pointer', // groesseres Tap-Ziel
 }
 const hudBadge: React.CSSProperties = {
   position: 'absolute', zIndex: 4,

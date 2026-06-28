@@ -44,7 +44,7 @@ export function Overview({ actuals, stats, onOpenStage, viewerName, onChangeName
         <button
           onClick={() => setSwitching(true)}
           aria-label="Identität wechseln"
-          style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--ink-2)', border: '0.5px solid var(--slate)', borderRadius: 999, padding: '4px 10px 4px 4px', color: 'var(--snow)', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--ink-2)', border: '0.5px solid var(--slate)', borderRadius: 999, padding: '6px 12px 6px 6px', minHeight: 40, color: 'var(--snow)', cursor: 'pointer' }}
         >
           <Avatar name={viewerName} size={22} />
           <span style={{ fontSize: 12, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{viewerName}</span>

@@ -185,7 +185,7 @@ const toggleWrap: React.CSSProperties = {
 function segStyle(active: boolean): React.CSSProperties {
   return {
     fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase',
-    padding: '5px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
+    padding: '9px 13px', borderRadius: 999, border: 'none', cursor: 'pointer',
     background: active ? 'var(--signal)' : 'transparent', color: active ? '#1a0e04' : 'var(--mist)', fontWeight: active ? 700 : 400,
   }
 }
