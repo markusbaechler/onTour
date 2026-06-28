@@ -9,9 +9,9 @@ interface Props {
   totalKm: number
 }
 
-const P0: [number, number] = [14, 84]
-const P1: [number, number] = [150, 8]
-const P2: [number, number] = [286, 84]
+const P0: [number, number] = [12, 50]
+const P1: [number, number] = [150, 12]
+const P2: [number, number] = [288, 50]
 
 function point(t: number): [number, number] {
   const u = 1 - t
@@ -28,14 +28,14 @@ export function TripArc({ ridden, todayIndex, dayLabel, statusLabel, gefahrenKm,
   const arcPath = `M${P0[0]},${P0[1]} Q${P1[0]},${P1[1]} ${P2[0]},${P2[1]}`
 
   return (
-    <div className="card" style={{ background: 'var(--ink-raised)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+    <div className="card" style={{ padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div>
           <span className="eyebrow">Fortschritt</span>
-          <div className="disp" style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{dayLabel}</div>
+          <div className="disp" style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{dayLabel}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div className="mono" style={{ fontSize: 16, fontWeight: 700 }}>
+          <div className="mono" style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>
             <span style={{ color: 'var(--signal)' }}>{fmt(gefahrenKm)}</span>
             <span className="muted"> / {fmt(totalKm)} km</span>
           </div>
@@ -43,7 +43,7 @@ export function TripArc({ ridden, todayIndex, dayLabel, statusLabel, gefahrenKm,
         </div>
       </div>
 
-      <svg viewBox="0 0 300 96" style={{ width: '100%', height: 84, display: 'block', overflow: 'visible' }} aria-hidden="true">
+      <svg viewBox="0 0 300 58" style={{ width: '100%', height: 50, display: 'block', overflow: 'visible' }} aria-hidden="true">
         <path d={arcPath} fill="none" stroke="var(--slate-strong)" strokeWidth="3" strokeLinecap="round" />
         <path d={arcPath} fill="none" stroke="var(--signal)" strokeWidth="3" strokeLinecap="round" pathLength={1} strokeDasharray={`${f} 1`} />
         {ridden.map((done, i) => {

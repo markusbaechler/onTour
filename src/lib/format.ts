@@ -5,10 +5,16 @@ export const km = (n: number) => `${fmt(n)} km`
 export const hm = (n: number) => `${fmt(n)} hm`
 
 export function dateRange(startIso: string, endIso: string): string {
-  const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'long' }
-  const a = new Date(startIso).toLocaleDateString('de-CH', { day: '2-digit', month: 'numeric' })
-  const b = new Date(endIso).toLocaleDateString('de-CH', opts)
-  return `${a} – ${b}`
+  const s = new Date(startIso)
+  const e = new Date(endIso)
+  const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()
+  const end = e.toLocaleDateString('de-CH', { day: 'numeric', month: 'long', year: 'numeric' }) // "10. Juli 2026"
+  if (sameMonth) {
+    const startDay = s.toLocaleDateString('de-CH', { day: 'numeric' }) // "4"
+    return `${startDay}. – ${end}` // "4. – 10. Juli 2026"
+  }
+  const start = s.toLocaleDateString('de-CH', { day: 'numeric', month: 'long' }) // "4. Juli"
+  return `${start} – ${end}`
 }
 
 export function stageDate(startIso: string, dayIndex: number): string {
