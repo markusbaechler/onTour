@@ -100,6 +100,28 @@ function doPost(e) {
     return _json({ ok: true })
   }
 
+  // Read-only Diagnose: nur Schluessel-Namen + sichere Booleans (keine Werte/Secrets).
+  // Hilft, Tippfehler in den Skripteigenschaften zu finden. Kann spaeter entfernt werden.
+  if (op === '__debug__') {
+    var all = _props().getProperties()
+    var keys = Object.keys(all)
+    var cfg = keys.filter(function (k) { return k.indexOf('sub:') !== 0 && k.indexOf('loc:') !== 0 && k.indexOf('ann:') !== 0 })
+    var su = all['SENDER_URL'] || ''
+    return _json({
+      ok: true,
+      configKeys: cfg,
+      senderUrlSet: !!all['SENDER_URL'],
+      senderUrlHost: su ? su.replace(/^https?:\/\//, '').split('/')[0] : null,
+      senderUrlLen: su.length,
+      senderSecretSet: !!all['SENDER_SECRET'],
+      appUrlSet: !!all['APP_URL'],
+      counts: {
+        subs: keys.filter(function (k) { return k.indexOf('sub:') === 0 }).length,
+        locs: keys.filter(function (k) { return k.indexOf('loc:') === 0 }).length,
+      },
+    })
+  }
+
   // Alle 'data'-Mutationen unter Lock mergen
   var lock = LockService.getScriptLock()
   lock.waitLock(5000)
