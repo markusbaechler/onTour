@@ -4,9 +4,10 @@ import { ColBadge } from '../components/ColBadge'
 import { MapView } from '../components/MapView'
 import { RiddenToggle } from '../components/RiddenToggle'
 import { GpxManager } from '../components/GpxManager'
-import { IcRoute, IcMap } from '../components/Icons'
+import { ProfileModal } from '../components/ProfileModal'
+import { IcRoute, IcMap, IcDownload, IcMountain } from '../components/Icons'
 import { Navigation } from './Navigation'
-import { km, hm, stageDate, stageUnlocked } from '../lib/format'
+import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
 import type { StageStats } from '../lib/passes'
@@ -39,6 +40,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [open, setOpen] = useState<string | undefined>(openStage ?? trip.stages[0].id)
   const [navStage, setNavStage] = useState<Stage | null>(null)
   const [gpxStage, setGpxStage] = useState<Stage | null>(null)
+  const [profileStage, setProfileStage] = useState<Stage | null>(null)
   const tracks = useRiddenTracks(actuals)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -84,27 +86,59 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                 {a?.ridden && <span className="pill ok">gefahren</span>}
               </button>
 
-              {isOpen && (
-                <div style={{ padding: 12, paddingTop: 4 }}>
-                  <MapView stages={[s]} tracks={tracks} passes={(stats[s.id]?.passes ?? []).map((p) => [p.lat, p.lng] as LatLng)} height={200} />
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '12px 0' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
-                      {(stats[s.id]?.passes ?? s.cols).map((c, i) => <ColBadge key={i} col={c} />)}
+              {isOpen && (() => {
+                const st = stats[s.id]
+                const passes = st?.passes ?? []
+                const passList = passes.length ? [...passes].sort((p, q) => p.distFromStart - q.distFromStart) : null
+                return (
+                  <div style={{ padding: 12, paddingTop: 6 }}>
+                    {/* Status */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                      <span className="eyebrow">Status</span>
+                      <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} disabled={!unlocked} hint={lockHint} />
                     </div>
-                    <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} disabled={!unlocked} hint={lockHint} />
-                  </div>
 
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn" style={{ flex: 1 }} onClick={() => setNavStage(s)}>
-                      <IcRoute size={18} /> Navigation
+                    {/* Karte */}
+                    <MapView stages={[s]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} height={190} />
+
+                    {/* Kennzahlenzeile */}
+                    <div style={{ display: 'flex', gap: 6, margin: '12px 0' }}>
+                      <div className="stat" style={statCell}><div className="num" style={numStyle}>{fmt(st?.km ?? s.plannedKm)}</div><div className="lbl">km</div></div>
+                      <div className="stat" style={statCell}><div className="num" style={{ ...numStyle, color: 'var(--glacier)' }}>{fmt(st?.ascent ?? s.plannedAscent)}</div><div className="lbl">hm</div></div>
+                      <div className="stat" style={statCell}><div className="num" style={numStyle}>{fmt(st?.highest ?? 0)}</div><div className="lbl">höchster</div></div>
+                      <div className="stat" style={statCell}><div className="num" style={{ ...numStyle, color: 'var(--signal)' }}>{passes.length}</div><div className="lbl">Pässe</div></div>
+                    </div>
+
+                    {/* Cols als aufgeraeumte Liste */}
+                    {passList && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                        {passList.map((p, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <ColBadge col={p} />
+                            <span className="mono muted" style={{ fontSize: 11, marginLeft: 'auto' }}>bei {fmt(p.distFromStart / 1000)} km</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Aktionen */}
+                    <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setNavStage(s)}>
+                      <IcRoute size={18} /> Navigation starten
                     </button>
-                    <button className="btn ghost" style={{ flex: 1 }} onClick={() => setGpxStage(s)}>
-                      <IcMap size={18} /> GPX verwalten
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <a className="btn ghost" href={`${base}${s.gpxUrl ?? ''}`} download style={{ flex: 1, textDecoration: 'none', fontSize: 13 }}>
+                        <IcDownload size={17} /> Roadbook
+                      </a>
+                      <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setGpxStage(s)}>
+                        <IcMap size={17} /> GPX
+                      </button>
+                      <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setProfileStage(s)}>
+                        <IcMountain size={17} /> Profil
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
             </div>
           )
         })}
@@ -122,6 +156,12 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
           onClose={() => setGpxStage(null)}
         />
       )}
+      {profileStage && (
+        <ProfileModal stage={profileStage} stats={stats[profileStage.id]} onClose={() => setProfileStage(null)} />
+      )}
     </div>
   )
 }
+
+const statCell: React.CSSProperties = { padding: '8px 6px', textAlign: 'center' }
+const numStyle: React.CSSProperties = { fontSize: 15 }
