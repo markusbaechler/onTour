@@ -16,10 +16,12 @@ interface Props {
   geoError: string | null
   onStartShare: (name: string) => void
   onStopShare: () => void
+  autoShare: boolean
+  onAutoShareChange: (v: boolean) => void
   onChangeName: (name: string) => void
 }
 
-export function Live({ live, viewerName, sharing, geoError, onStartShare, onStopShare, onChangeName }: Props) {
+export function Live({ live, viewerName, sharing, geoError, onStartShare, onStopShare, autoShare, onAutoShareChange, onChangeName }: Props) {
   const [switching, setSwitching] = useState(false)
 
   const riders = useMemo(
@@ -75,9 +77,13 @@ export function Live({ live, viewerName, sharing, geoError, onStartShare, onStop
       <button onClick={toggle} className="row" style={{ marginTop: 12, cursor: 'pointer' }} aria-pressed={sharing}>
         <IcPin size={18} />
         <span style={{ flex: 1, fontSize: 13, textAlign: 'left' }}>Meinen Standort teilen{viewerName ? ` als ${viewerName}` : ''}</span>
-        <span style={{ width: 38, height: 22, borderRadius: 999, background: sharing ? 'var(--signal)' : 'var(--slate-strong)', position: 'relative', transition: 'background .15s ease', flexShrink: 0 }}>
-          <span style={{ position: 'absolute', top: 2, left: sharing ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: 'var(--ink)', transition: 'left .15s ease' }} />
-        </span>
+        <Switch on={sharing} />
+      </button>
+
+      {/* Automatisch beim Öffnen teilen */}
+      <button onClick={() => onAutoShareChange(!autoShare)} className="row" style={{ marginTop: 8, cursor: 'pointer', padding: '10px 12px' }} aria-pressed={autoShare}>
+        <span style={{ flex: 1, fontSize: 12, textAlign: 'left', color: 'var(--mist)' }}>Beim Öffnen automatisch teilen</span>
+        <Switch on={autoShare} />
       </button>
 
       {geoError && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 8 }}>{geoError}</div>}
@@ -93,6 +99,14 @@ export function Live({ live, viewerName, sharing, geoError, onStartShare, onStop
         />
       )}
     </div>
+  )
+}
+
+function Switch({ on }: { on: boolean }) {
+  return (
+    <span style={{ width: 38, height: 22, borderRadius: 999, background: on ? 'var(--signal)' : 'var(--slate-strong)', position: 'relative', transition: 'background .15s ease', flexShrink: 0 }}>
+      <span style={{ position: 'absolute', top: 2, left: on ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: 'var(--ink)', transition: 'left .15s ease' }} />
+    </span>
   )
 }
 

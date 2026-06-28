@@ -16,11 +16,31 @@ function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): numb
   return 2 * R * Math.asin(Math.sqrt(h))
 }
 
+const LS_AUTO = 'alpes-autoshare'
+
+/** Einstellung „Standort beim Öffnen automatisch teilen" (lokal, Standard: an). */
+export function useAutoShare() {
+  const [auto, setAuto] = useState(() => {
+    try { return localStorage.getItem(LS_AUTO) !== '0' } catch { return true }
+  })
+  const set = useCallback((v: boolean) => {
+    try { localStorage.setItem(LS_AUTO, v ? '1' : '0') } catch { /* ignore */ }
+    setAuto(v)
+  }, [])
+  return [auto, set] as const
+}
+
 /**
- * Teilt den eigenen Standort per watchPosition, gedrosselt, opt-in.
+ * Teilt den eigenen Standort per watchPosition, gedrosselt.
+ * Optional autoShare: startet beim Öffnen/Vordergrund automatisch (mit bekanntem Namen).
  * Kein Hintergrund-GPS: stoppt automatisch, wenn die App/der Tab in den Hintergrund geht.
  */
-export function useGeoShare(onLocation: (loc: Omit<RiderLocation, 'at'>) => void) {
+export function useGeoShare(
+  onLocation: (loc: Omit<RiderLocation, 'at'>) => void,
+  opts?: { riderName?: string; autoShare?: boolean },
+) {
+  const riderName = opts?.riderName ?? ''
+  const autoShare = opts?.autoShare ?? false
   const [sharing, setSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const watchId = useRef<number | null>(null)
@@ -38,6 +58,9 @@ export function useGeoShare(onLocation: (loc: Omit<RiderLocation, 'at'>) => void
 
   const start = useCallback((riderName: string) => {
     if (!('geolocation' in navigator)) { setError('Standort wird vom Geraet nicht unterstuetzt.'); return }
+    if (!riderName.trim()) return
+    // idempotent: laufende Beobachtung zuerst beenden (kein doppelter Watch)
+    if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current)
     setError(null)
     rider.current = riderName.trim()
     setSharing(true)
@@ -63,6 +86,7 @@ export function useGeoShare(onLocation: (loc: Omit<RiderLocation, 'at'>) => void
     )
   }, [])
 
+  // Stoppt im Hintergrund (kein Hintergrund-GPS) und beim Verlassen.
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === 'hidden') stop() }
     document.addEventListener('visibilitychange', onHide)
@@ -73,6 +97,15 @@ export function useGeoShare(onLocation: (loc: Omit<RiderLocation, 'at'>) => void
       stop()
     }
   }, [stop])
+
+  // Auto-Teilen: beim Öffnen und bei Rückkehr in den Vordergrund automatisch starten.
+  useEffect(() => {
+    if (!autoShare || !riderName) return
+    const onVisible = () => { if (document.visibilityState === 'visible') start(riderName) }
+    if (document.visibilityState === 'visible') start(riderName)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [autoShare, riderName, start])
 
   return { sharing, error, start, stop }
 }

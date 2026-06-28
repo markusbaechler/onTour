@@ -11,7 +11,7 @@ import { Toaster } from './components/Toaster'
 import { Hero } from './components/Hero'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
-import { useGeoShare } from './lib/geo'
+import { useGeoShare, useAutoShare } from './lib/geo'
 import { useStageStats } from './lib/passes'
 import { trip } from './data/trip'
 
@@ -24,7 +24,8 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(() => !PASSWORD || sessionStorage.getItem('alpes-ok') === '1')
   const store = useStore()
   const viewer = useViewer()
-  const geo = useGeoShare(store.setLocation)
+  const [autoShare, setAutoShare] = useAutoShare()
+  const geo = useGeoShare(store.setLocation, { riderName: viewer.name, autoShare })
   const base = import.meta.env.BASE_URL
   const stageStats = useStageStats(base)
 
@@ -74,6 +75,8 @@ export default function App() {
           geoError={geo.error}
           onStartShare={geo.start}
           onStopShare={geo.stop}
+          autoShare={autoShare}
+          onAutoShareChange={setAutoShare}
           onChangeName={viewer.setName}
         />
       )}
