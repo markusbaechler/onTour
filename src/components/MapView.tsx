@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { MapContainer, Polyline, Marker, AttributionControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -48,10 +48,20 @@ function FitBounds({ points, sig }: { points: LatLng[]; sig: string }) {
   return null
 }
 
-function PanTo({ pos }: { pos?: LatLng | null }) {
+/** Fliegt zum hervorgehobenen Pass; beim Deaktivieren wieder raus auf die ganze Etappe. */
+function FlyController({ pos, points }: { pos?: LatLng | null; points: LatLng[] }) {
   const map = useMap()
+  const had = useRef(false)
   useEffect(() => {
-    if (pos) map.flyTo(pos, Math.max(map.getZoom(), 10), { duration: 0.6 })
+    if (pos) {
+      map.flyTo(pos, Math.max(map.getZoom(), 10), { duration: 0.6 })
+      had.current = true
+    } else if (had.current) {
+      had.current = false
+      if (points.length) map.flyToBounds(L.latLngBounds(points.map((p) => L.latLng(p[0], p[1]))), { padding: [28, 28], duration: 0.6 })
+    }
+    // points bewusst nicht als Dep: sonst wuerde jeder Re-Render erneut fliegen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, pos])
   return null
 }
@@ -100,7 +110,7 @@ export function MapView({ stages, tracks, passes, highlight, height = 260 }: Pro
         ))}
         {highlight && <Marker position={highlight} icon={glowIcon} zIndexOffset={1000} />}
         <FitBounds points={allPoints} sig={fitSig} />
-        <PanTo pos={highlight} />
+        <FlyController pos={highlight} points={allPoints} />
       </MapContainer>
     </div>
   )
