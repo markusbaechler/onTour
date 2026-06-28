@@ -158,8 +158,21 @@ button.row:active { transform: scale(0.995); }
    Context, sonst lecken sie in den Root und liegen ueber Overlays (Lightbox,
    NamePrompt, Navigation). */
 .leaflet-container { background: var(--ink-2); font-family: var(--font-body); isolation: isolate; }
-.leaflet-control-attribution { background: rgba(14,13,17,.7) !important; color: var(--mist) !important; }
-.leaflet-control-attribution a { color: var(--mist) !important; }
+/* dezentes Hoehenrelief ueber der dunklen Karte (Berge sichtbar) */
+.hillshade { mix-blend-mode: soft-light; }
+/* Quellverweis dezent: klein, transparent, ohne Flagge/Leaflet-Branding */
+.leaflet-control-attribution {
+  background: rgba(14, 13, 17, .5) !important;
+  color: var(--mist) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 8px !important;
+  line-height: 1.4 !important;
+  padding: 0 4px !important;
+  opacity: .5;
+  border-radius: 4px 0 0 0;
+}
+.leaflet-control-attribution a { color: var(--mist) !important; text-decoration: none; }
+.leaflet-control-attribution:hover { opacity: .9; }
 .leaflet-bar a { background: var(--ink-raised); color: var(--snow); border-color: var(--slate) !important; }
 
 .col-marker {

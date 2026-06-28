@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import { DarkReliefTiles } from './MapTiles'
 import type { LatLng } from '../types'
 
 function Recenter({ pos, zoom }: { pos: LatLng; zoom: number }) {
@@ -38,7 +39,7 @@ export function NavMap({ track, pos, heading, height = 300 }: Props) {
           touchZoom={false}
           keyboard={false}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" maxZoom={19} />
+          <DarkReliefTiles />
           {track.length > 1 && (
             <>
               <Polyline positions={track} pathOptions={{ color: '#2a2935', weight: 11, lineCap: 'round', lineJoin: 'round' }} />
@@ -56,7 +57,7 @@ export function NavMap({ track, pos, heading, height = 300 }: Props) {
         </svg>
       </div>
 
-      <span className="mono" style={{ position: 'absolute', right: 8, bottom: 6, fontSize: 9, color: '#55545e', pointerEvents: 'none' }}>© OSM · CARTO</span>
+      <span className="mono" style={{ position: 'absolute', right: 8, bottom: 6, fontSize: 9, color: '#55545e', pointerEvents: 'none' }}>© OSM · CARTO · Esri</span>
     </div>
   )
 }

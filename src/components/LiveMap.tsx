@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react'
-import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
+import { MapContainer, Polyline, Marker, AttributionControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { DarkReliefTiles } from './MapTiles'
 import { clock, timeAgo } from '../lib/format'
 import { isFresh } from '../lib/store'
 import { avatarInitial } from '../lib/viewer'
@@ -48,12 +49,9 @@ export function LiveMap({ riders, route = [], height = 228 }: Props) {
 
   return (
     <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
-      <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl>
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          maxZoom={19}
-        />
+      <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl={false}>
+        <AttributionControl prefix={false} position="bottomright" />
+        <DarkReliefTiles />
         {route.length > 1 && <Polyline positions={route} pathOptions={{ color: '#2a2935', weight: 4 }} />}
         {riders.map((r) => (
           <Marker key={r.rider} position={[r.lat, r.lng]} icon={riderIcon(r)} />

@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react'
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Polyline, AttributionControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { DarkReliefTiles } from './MapTiles'
 import { trip } from '../data/trip'
 import type { LatLng, Photo } from '../types'
 
@@ -39,8 +40,9 @@ export function PhotoTimelineMap({ photos, onOpen, height = 360 }: { photos: Pho
 
   return (
     <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
-      <MapContainer center={center} zoom={8} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl>
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' maxZoom={19} />
+      <MapContainer center={center} zoom={8} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl={false}>
+        <AttributionControl prefix={false} position="bottomright" />
+        <DarkReliefTiles />
         {positions.length > 1 && <Polyline positions={positions} pathOptions={{ color: '#FF8A3D', weight: 2, opacity: 0.5, dashArray: '4 5' }} />}
         {ordered.map((p, i) => (
           <Marker key={p.id} position={positions[i]} icon={thumbIcon(p)} eventHandlers={{ click: () => onOpen(p.id) }} />
