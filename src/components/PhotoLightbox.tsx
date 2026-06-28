@@ -3,6 +3,7 @@ import { trip } from '../data/trip'
 import { clock, timeAgo } from '../lib/format'
 import type { Comment, Photo, Reaction } from '../types'
 import { Avatar } from './Avatar'
+import { BlurImage } from './BlurImage'
 import { IdentityPicker } from './IdentityPicker'
 import { IcMoodPlus, IcSend, IcSmile, IcX } from './Icons'
 import { dataApiReady } from '../lib/dataApi'
@@ -115,7 +116,7 @@ export function PhotoLightbox({
             touchX.current = null
           }}
         >
-          <img key={photo.id} className="fade-swap" src={photo.url} alt={photo.caption ?? `Foto von ${photo.author}`} style={image} />
+          <BlurImage key={photo.id} src={photo.url} alt={photo.caption ?? `Foto von ${photo.author}`} style={image} />
           {safeIndex > 0 && <button aria-label="Vorheriges" onClick={() => go(-1)} style={zone('left')}><span style={chev}>‹</span></button>}
           {safeIndex < photos.length - 1 && <button aria-label="Nächstes" onClick={() => go(1)} style={zone('right')}><span style={chev}>›</span></button>}
         </div>

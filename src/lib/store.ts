@@ -22,18 +22,26 @@ export function useStore() {
   const [data, setData] = useState<DataStore>({ actuals: [], photos: [], comments: [], reactions: [] })
   const [live, setLive] = useState<LiveStore>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const dataRef = useRef(data)
   dataRef.current = data
 
+  const reload = useCallback(() => {
+    setLoading(true); setError(false)
+    loadData()
+      .then((d) => {
+        const seeded = !dataApiReady && d.actuals.length === 0 && d.photos.length === 0
+        if (seeded) primeLocalData(demoSeed) // Seed lokal sichern, sonst loescht ihn der erste Op
+        setData(seeded ? demoSeed : d)
+        setLoading(false)
+      })
+      .catch(() => { setError(true); setLoading(false) })
+  }, [])
+
+  useEffect(() => { reload() }, [reload])
+
   useEffect(() => {
     let active = true
-    loadData().then((d) => {
-      if (!active) return
-      const seeded = !dataApiReady && d.actuals.length === 0 && d.photos.length === 0
-      if (seeded) primeLocalData(demoSeed) // Seed lokal sichern, sonst loescht ihn der erste Op
-      setData(seeded ? demoSeed : d)
-      setLoading(false)
-    })
     const pollLive = () => loadLive().then((l) => active && setLive(l))
     pollLive()
     const t = setInterval(pollLive, LIVE_POLL_MS)
@@ -114,5 +122,5 @@ export function useStore() {
     dispatch({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
   }, [])
 
-  return { ...data, live, loading, upsertActual, addPhoto, addPhotoLocal, removePhoto, addComment, toggleReaction, setLocation }
+  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, addComment, toggleReaction, setLocation }
 }

@@ -38,10 +38,11 @@ export function primeLocalData(data: DataStore) {
 
 export async function loadData(): Promise<DataStore> {
   if (!dataApiReady) return readLS(LS_DATA, emptyData)
-  try {
-    const res = await fetch(`${API}?scope=data`)
-    return { ...emptyData, ...(await res.json()) }
-  } catch { return readLS(LS_DATA, emptyData) }
+  // Scharf: bei Netz-/HTTP-Fehler werfen, damit der Store einen Fehlerzustand
+  // mit "erneut versuchen" zeigen kann (statt still leer).
+  const res = await fetch(`${API}?scope=data`)
+  if (!res.ok) throw new Error(`loadData ${res.status}`)
+  return { ...emptyData, ...((await res.json()) as Partial<DataStore>) }
 }
 
 export async function loadLive(): Promise<LiveStore> {

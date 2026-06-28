@@ -48,6 +48,9 @@ export default function App() {
           comments={store.comments}
           reactions={store.reactions}
           viewerName={viewer.name}
+          loading={store.loading}
+          error={store.error}
+          onRetry={store.reload}
           onAdd={store.addPhoto}
           onAddLocal={store.addPhotoLocal}
           onRemove={store.removePhoto}
