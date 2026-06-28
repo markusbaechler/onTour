@@ -26,6 +26,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Web-Push-Handler in den generierten Service-Worker einbinden (public/push-sw.js)
+        importScripts: ['push-sw.js'],
         // OSM/CARTO-Kacheln offline cachen, damit die Karte unterwegs ohne Netz laedt
         runtimeCaching: [
           {

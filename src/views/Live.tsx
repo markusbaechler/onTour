@@ -6,6 +6,7 @@ import { IcPin } from '../components/Icons'
 import { toast } from '../lib/toast'
 import { clock, timeAgo } from '../lib/format'
 import { isFresh } from '../lib/store'
+import { pushPermission, enablePush } from '../lib/push'
 import { avatarInitial } from '../lib/viewer'
 import type { LatLng, RiderLocation } from '../types'
 
@@ -23,6 +24,15 @@ interface Props {
 
 export function Live({ live, viewerName, sharing, geoError, onStartShare, onStopShare, autoShare, onAutoShareChange, onChangeName }: Props) {
   const [switching, setSwitching] = useState(false)
+  const [notif, setNotif] = useState<NotificationPermission | 'unsupported'>(() => pushPermission())
+
+  async function toggleNotif() {
+    if (notif === 'granted') { toast.info('Benachrichtigungen sind aktiv'); return }
+    const r = await enablePush(viewerName)
+    setNotif(r === 'granted' ? 'granted' : r === 'denied' ? 'denied' : 'unsupported')
+    if (r === 'granted') toast.success('Benachrichtigungen aktiviert')
+    else if (r === 'denied') toast.error('Benachrichtigungen blockiert – im Browser erlauben')
+  }
 
   const riders = useMemo(
     () => Object.values(live).sort((a, b) => b.at.localeCompare(a.at)),
@@ -85,6 +95,18 @@ export function Live({ live, viewerName, sharing, geoError, onStartShare, onStop
         <span style={{ flex: 1, fontSize: 12, textAlign: 'left', color: 'var(--mist)' }}>Beim Öffnen automatisch teilen</span>
         <Switch on={autoShare} />
       </button>
+
+      {/* Push-Benachrichtigung, wenn jemand live geht (nur wenn konfiguriert) */}
+      {notif !== 'unsupported' && (
+        <button onClick={toggleNotif} className="row" style={{ marginTop: 8, cursor: 'pointer', padding: '10px 12px' }} aria-pressed={notif === 'granted'}>
+          <span style={{ flex: 1, fontSize: 12, textAlign: 'left', color: 'var(--mist)' }}>Benachrichtigen, wenn jemand live geht</span>
+          {notif === 'granted'
+            ? <span className="pill ok">an</span>
+            : notif === 'denied'
+              ? <span className="pill plan">blockiert</span>
+              : <span style={{ color: 'var(--signal)', fontSize: 12, fontWeight: 500 }}>einschalten</span>}
+        </button>
+      )}
 
       {geoError && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 8 }}>{geoError}</div>}
       <div style={{ fontSize: 11, color: 'var(--mist)', marginTop: 8, textAlign: 'center' }}>

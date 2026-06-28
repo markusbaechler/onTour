@@ -1,24 +1,32 @@
 /**
- * Alpes – Tour des Cols · Daten-API (operationsbasiert)
- * -----------------------------------------------------
- * Hält den gemeinsamen Stand in ScriptProperties:
- *   'data'        -> { actuals, photos, comments, reactions }
- *   'loc:<rider>' -> { rider, lat, lng, at, ... }   (ein Key pro Fahrer)
+ * bbz Cannonball – Daten-API (operationsbasiert) + Live-Standort + Web-Push
+ * ------------------------------------------------------------------------
+ * ScriptProperties:
+ *   'data'         -> { actuals, photos, comments, reactions }
+ *   'loc:<rider>'  -> { rider, lat, lng, at, ... }          (Live-Standort)
+ *   'sub:<hash>'   -> { rider, sub }                         (Web-Push-Abo)
+ *   'ann:<rider>'  -> <timestamp>                            (Drossel je Fahrer)
  *
- * Mehrere Schreibende (Fahrer-Pings, Kommentare) -> 'data'-Operationen
- * mergen serverseitig unter LockService. Standort-Pings schreiben ihren
- * eigenen Key und brauchen keinen Lock.
- *
- * Setup: script.google.com -> Code einfügen -> Bereitstellen -> Web-App
- *   Ausführen als: Ich · Zugriff: Jeder -> URL als VITE_DATA_API in .env.
+ * Setup Web-App: script.google.com -> Bereitstellen -> Web-App
+ *   Ausführen als: Ich · Zugriff: JEDER -> URL als VITE_DATA_API.
+ * Fuer Push zusaetzlich unter Projekt-Einstellungen -> Skripteigenschaften setzen:
+ *   SENDER_URL    = URL des Sende-Dienstes (sender/, /api/notify)
+ *   SENDER_SECRET = gemeinsames Geheimnis (gleich wie im Sende-Dienst)
+ *   APP_URL       = https://markusbaechler.github.io/onTour/   (optional)
  * Client sendet POST als text/plain (vermeidet CORS-Preflight).
  */
+
+var THROTTLE_MS = 10 * 60 * 1000 // max. 1 "live"-Push je Fahrer / 10 Min
 
 function _props() { return PropertiesService.getScriptProperties() }
 function _json(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON) }
 function _data() {
   var raw = _props().getProperty('data')
   return raw ? JSON.parse(raw) : { actuals: [], photos: [], comments: [], reactions: [] }
+}
+function _md5(s) {
+  var d = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s)
+  return d.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2) }).join('')
 }
 
 function doGet(e) {
@@ -34,14 +42,61 @@ function doGet(e) {
 function doPost(e) {
   var body = JSON.parse((e && e.postData && e.postData.contents) || '{}')
   var op = body.op
+  var props = _props()
 
-  // Standort: eigener Key pro Fahrer, kein Lock nötig
+  // Standort: eigener Key pro Fahrer, kein Lock noetig
   if (op === 'setLocation') {
     if (!body.rider) return _json({ ok: false })
-    _props().setProperty('loc:' + body.rider, JSON.stringify({
+    props.setProperty('loc:' + body.rider, JSON.stringify({
       rider: body.rider, lat: body.lat, lng: body.lng,
       at: new Date().toISOString(), accuracy: body.accuracy, speed: body.speed, heading: body.heading
     }))
+    return _json({ ok: true })
+  }
+
+  // Web-Push-Abo speichern (Key = Hash des Endpoints, ein Eintrag pro Geraet)
+  if (op === 'subscribe') {
+    if (!body.sub || !body.sub.endpoint) return _json({ ok: false })
+    props.setProperty('sub:' + _md5(body.sub.endpoint), JSON.stringify({ rider: body.rider || '', sub: body.sub }))
+    return _json({ ok: true })
+  }
+
+  // "<rider> ist live" -> Push an alle anderen Abos (gedrosselt, ueber den Sende-Dienst)
+  if (op === 'announce') {
+    var rider = body.rider || ''
+    var now = Date.now()
+    var lastRaw = props.getProperty('ann:' + rider)
+    if (lastRaw && (now - parseInt(lastRaw, 10)) < THROTTLE_MS) return _json({ ok: true, throttled: true })
+    props.setProperty('ann:' + rider, String(now))
+
+    var sender = props.getProperty('SENDER_URL')
+    var secret = props.getProperty('SENDER_SECRET')
+    if (!sender) return _json({ ok: false, error: 'no SENDER_URL' })
+
+    var all = props.getProperties(), subs = [], keyOf = {}
+    Object.keys(all).forEach(function (k) {
+      if (k.indexOf('sub:') === 0) {
+        var rec = JSON.parse(all[k])
+        if (rec.rider !== rider && rec.sub) { subs.push(rec.sub); keyOf[rec.sub.endpoint] = k }
+      }
+    })
+    if (!subs.length) return _json({ ok: true, sent: 0 })
+
+    var appUrl = props.getProperty('APP_URL') || 'https://markusbaechler.github.io/onTour/'
+    var payload = {
+      secret: secret,
+      subscriptions: subs,
+      notification: { title: 'Live', body: rider + ' ist jetzt live unterwegs', url: appUrl, tag: 'live-' + rider },
+    }
+    var resp = UrlFetchApp.fetch(sender, {
+      method: 'post', contentType: 'application/json',
+      payload: JSON.stringify(payload), muteHttpExceptions: true,
+    })
+    // Abgelaufene Abos (410/404) entfernen
+    try {
+      var res = JSON.parse(resp.getContentText() || '{}')
+      if (res.expired && res.expired.length) res.expired.forEach(function (ep) { if (keyOf[ep]) props.deleteProperty(keyOf[ep]) })
+    } catch (err) { /* ignore */ }
     return _json({ ok: true })
   }
 
@@ -68,7 +123,7 @@ function doPost(e) {
         break
       default: return _json({ ok: false, error: 'unknown op' })
     }
-    _props().setProperty('data', JSON.stringify(d))
+    props.setProperty('data', JSON.stringify(d))
     return _json({ ok: true })
   } finally {
     lock.releaseLock()

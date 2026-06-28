@@ -13,3 +13,6 @@ handoff/
 
 # Liefer-/Importordner fuer Roh-GPX. Kanonisch sind public/roadbooks/tN.gpx.
 gpx_routes/
+
+# Push-Sende-Dienst: lokale Abhaengigkeiten nicht committen
+sender/node_modules

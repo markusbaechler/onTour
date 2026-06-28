@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_DATA_API?: string
   // Optionales gemeinsames Trip-Passwort (leer = kein Login)
   readonly VITE_TRIP_PASSWORD?: string
+  // Web-Push: oeffentlicher VAPID-Schluessel (Privater liegt im Sende-Dienst)
+  readonly VITE_VAPID_PUBLIC_KEY?: string
 }
 
 interface ImportMeta {

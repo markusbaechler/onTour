@@ -1,0 +1,9 @@
+{
+  "name": "ontour-push-sender",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stateless Web-Push-Sende-Dienst fuer bbz Cannonball (von Apps Script aufgerufen)",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

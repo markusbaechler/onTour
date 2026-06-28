@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Nav, type Tab } from './components/Nav'
 import { Overview } from './views/Overview'
 import { Stages } from './views/Stages'
@@ -12,6 +12,7 @@ import { Hero } from './components/Hero'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare, useAutoShare } from './lib/geo'
+import { announceLive } from './lib/push'
 import { useStageStats } from './lib/passes'
 import { trip } from './data/trip'
 
@@ -28,6 +29,14 @@ export default function App() {
   const geo = useGeoShare(store.setLocation, { riderName: viewer.name, autoShare })
   const base = import.meta.env.BASE_URL
   const stageStats = useStageStats(base)
+
+  // Beim Live-gehen (Wechsel auf "teilt jetzt") die anderen per Push benachrichtigen.
+  // Das Backend drosselt, damit Vordergrund-Wechsel nicht mehrfach pingen.
+  const prevSharing = useRef(false)
+  useEffect(() => {
+    if (geo.sharing && !prevSharing.current && viewer.name) announceLive(viewer.name)
+    prevSharing.current = geo.sharing
+  }, [geo.sharing, viewer.name])
 
   if (!unlocked) return <Gate onUnlock={() => setUnlocked(true)} />
 
