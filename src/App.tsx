@@ -46,7 +46,7 @@ export default function App() {
     <>
     <div className="shell">
       <OfflineBanner />
-      {tab === 'overview' && <Overview actuals={store.actuals} stats={stageStats} onOpenStage={openStageInStages} viewerName={viewer.name} onChangeName={viewer.setName} />}
+      {tab === 'overview' && <Overview actuals={store.actuals} stats={stageStats} live={store.live} onOpenStage={openStageInStages} onGoLive={() => setTab('live')} viewerName={viewer.name} onChangeName={viewer.setName} />}
       {tab === 'stages' && <Stages actuals={store.actuals} stats={stageStats} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
       {tab === 'sollist' && <SollIst actuals={store.actuals} onUpsert={store.upsertActual} />}
       {tab === 'photos' && (
