@@ -8,6 +8,7 @@ import { Live } from './views/Live'
 import { IdentityPicker } from './components/IdentityPicker'
 import { OfflineBanner } from './components/OfflineBanner'
 import { Toaster } from './components/Toaster'
+import { Hero } from './components/Hero'
 import { useStore } from './lib/store'
 import { useViewer } from './lib/viewer'
 import { useGeoShare } from './lib/geo'
@@ -19,6 +20,7 @@ const PASSWORD = import.meta.env.VITE_TRIP_PASSWORD
 export default function App() {
   const [tab, setTab] = useState<Tab>('overview')
   const [openStage, setOpenStage] = useState<string | undefined>()
+  const [showHero, setShowHero] = useState(() => { try { return sessionStorage.getItem('hero-seen') !== '1' } catch { return true } })
   const [unlocked, setUnlocked] = useState(() => !PASSWORD || sessionStorage.getItem('alpes-ok') === '1')
   const store = useStore()
   const viewer = useViewer()
@@ -36,7 +38,12 @@ export default function App() {
     setTab('stages')
   }
 
+  const heroReady = trip.stages.every((s) => stageStats[s.id])
+  const heroKm = heroReady ? trip.stages.reduce((a, s) => a + stageStats[s.id].km, 0) : trip.stages.reduce((a, s) => a + s.plannedKm, 0)
+  const heroPasses = heroReady ? trip.stages.reduce((a, s) => a + stageStats[s.id].passes.length, 0) : trip.stages.reduce((a, s) => a + s.cols.length, 0)
+
   return (
+    <>
     <div className="shell">
       <OfflineBanner />
       {tab === 'overview' && <Overview actuals={store.actuals} stats={stageStats} onOpenStage={openStageInStages} viewerName={viewer.name} onChangeName={viewer.setName} />}
@@ -73,6 +80,19 @@ export default function App() {
       <Nav tab={tab} onChange={(t) => { setOpenStage(undefined); setTab(t) }} />
       <Toaster />
     </div>
+    {showHero && (
+      <Hero
+        base={base}
+        title={trip.title}
+        subtitle={trip.subtitle}
+        days={trip.stages.length}
+        km={heroKm}
+        passes={heroPasses}
+        riders={trip.riders}
+        onEnter={() => { setShowHero(false); window.scrollTo(0, 0) }}
+      />
+    )}
+    </>
   )
 }
 
