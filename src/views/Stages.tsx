@@ -10,7 +10,7 @@ import { Navigation } from './Navigation'
 import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
-import { usePlanTracks, type StageStats } from '../lib/passes'
+import { usePlanPlaces, usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual, LatLng, Stage } from '../types'
 
 /** Laedt gefahrene Tracks (Actual.trackUrl) fuer die Kartenlinie; reagiert auf Aenderungen. */
@@ -44,6 +44,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [highlight, setHighlight] = useState<LatLng | null>(null)
   const tracks = useRiddenTracks(actuals)
   const planTracks = usePlanTracks(actuals)
+  const planPlaces = usePlanPlaces(actuals, planTracks)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
@@ -73,7 +74,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
           const a = actualFor(actuals, s.id)
           // Ersatz-Roadbook vorhanden -> Karte/Marker/Navigation folgen der Ersatzroute
           const pt = planTracks[s.id]
-          const eff = pt?.length ? { ...s, track: pt, start: pt[0], end: pt[pt.length - 1] } : s
+          const eff = pt?.length ? { ...s, track: pt, start: pt[0], end: pt[pt.length - 1], ...(planPlaces[s.id] ?? {}) } : s
           const unlocked = stageUnlocked(trip.startDate, s.day - 1)
           const lockHint = `erst ab ${stageDate(trip.startDate, s.day - 1)}`
           return (
@@ -85,7 +86,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
               >
                 <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 12 }}>T{s.day}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{s.from} → {s.to}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{eff.from} → {eff.to}</div>
                   <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>{stageDate(trip.startDate, s.day - 1)} · {km(stats[s.id]?.km ?? s.plannedKm)} · {hm(stats[s.id]?.ascent ?? s.plannedAscent)}</div>
                 </div>
                 {a?.ridden && <span className="pill ok">gefahren</span>}
@@ -147,10 +148,10 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                       <a className="btn ghost" href={a?.planTrackUrl?.startsWith('http') ? a.planTrackUrl : `${base}${s.gpxUrl ?? ''}`} download style={{ flex: 1, textDecoration: 'none', fontSize: 13 }}>
                         <IcDownload size={17} /> Roadbook
                       </a>
-                      <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setGpxStage(s)}>
+                      <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setGpxStage(eff)}>
                         <IcMap size={17} /> GPX
                       </button>
-                      <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setProfileStage(s)}>
+                      <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setProfileStage(eff)}>
                         <IcMountain size={17} /> Profil
                       </button>
                     </div>
