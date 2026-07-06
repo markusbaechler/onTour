@@ -9,7 +9,7 @@ import { Sparkline } from '../components/Sparkline'
 import { IcCheck, IcCircle, IcBroadcast } from '../components/Icons'
 import { fmt, km, hm, dateRange, clock, stageStart } from '../lib/format'
 import { actualFor, isFresh } from '../lib/store'
-import { usePlanTracks, type StageStats } from '../lib/passes'
+import { usePlanPlaces, usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual, RiderLocation } from '../types'
 
 interface Props {
@@ -25,6 +25,7 @@ interface Props {
 export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerName, onChangeName }: Props) {
   const [switching, setSwitching] = useState(false)
   const planTracks = usePlanTracks(actuals)
+  const planPlaces = usePlanPlaces(actuals, planTracks)
   const ready = trip.stages.every((s) => stats[s.id])
 
   const totals = useMemo(() => {
@@ -117,7 +118,7 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
             <span className="mono muted" style={{ fontSize: 11 }}>T{nextStage.day} · {km(nextStats?.km ?? nextStage.plannedKm)} · {hm(nextStats?.ascent ?? nextStage.plannedAscent)}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextStage.from} → {nextStage.to}</div>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{planPlaces[nextStage.id]?.from ?? nextStage.from} → {planPlaces[nextStage.id]?.to ?? nextStage.to}</div>
             {nextTop && <ColBadge col={nextTop} />}
           </div>
           <Sparkline profile={nextStats?.profile ?? []} />
@@ -144,7 +145,7 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
             <button key={s.id} className="row" onClick={() => onOpenStage(s.id)}>
               <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 12 }}>T{s.day}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.from} → {s.to}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planPlaces[s.id]?.from ?? s.from} → {planPlaces[s.id]?.to ?? s.to}</div>
                 <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>{km(stats[s.id]?.km ?? s.plannedKm)} · {hm(stats[s.id]?.ascent ?? s.plannedAscent)}</div>
               </div>
               {top && <ColBadge col={top} />}
