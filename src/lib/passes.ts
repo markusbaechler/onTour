@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from 'react'
 import { trip } from '../data/trip'
 import { passNames } from '../data/passNames'
 import { parseGpxProfile, type ProfilePt } from './gpx'
+import type { Actual } from '../types'
 
 // Pass = die Route kreuzt einen benannten Pass aus dem Gazetteer (src/data/passNames.ts,
 // OSM mountain_pass/saddle). PASS_CROSS_THRESHOLD justiert die Trefferzahl (~48).
@@ -111,20 +113,44 @@ export function analyzeStage(profile: ProfilePt[]): StageStats {
   return { passes, highest: Math.round(Math.max(...ele)), ascent: Math.round(ascent), km: Math.round(total / 1000), profile: sampleProfile, curves }
 }
 
-/** Laedt alle Roadbook-GPX einmalig und liefert Pass-/Hoehen-/Anstiegsstatistik je Etappe. */
-export function useStageStats(base: string): Record<string, StageStats> {
+const LOCAL_GPX_PREFIX = 'alpes-gpx:'
+
+/** Liest GPX-Text: `local:{key}` aus localStorage (Demo), sonst per fetch. */
+async function gpxText(url: string): Promise<string> {
+  if (url.startsWith('local:')) {
+    const t = localStorage.getItem(LOCAL_GPX_PREFIX + url.slice('local:'.length))
+    if (!t) throw new Error('lokales GPX fehlt')
+    return t
+  }
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('GPX nicht erreichbar')
+  return res.text()
+}
+
+/**
+ * Laedt alle Roadbook-GPX und liefert Pass-/Hoehen-/Anstiegsstatistik je Etappe.
+ * Hat eine Etappe ein Ersatz-Roadbook (actual.planTrackUrl), wird DESSEN GPX
+ * analysiert – Etappenkarte, Dashboard und Gesamttour rechnen dann damit.
+ * Laedt automatisch neu, wenn sich ein Ersatz-Roadbook aendert.
+ */
+export function useStageStats(base: string, actuals: Actual[] = []): Record<string, StageStats> {
   const [stats, setStats] = useState<Record<string, StageStats>>({})
+  // Stabiler Schluessel: eine Zeichenkette je Etappen-Ersatz -> Effekt feuert genau bei Aenderung
+  const planKey = trip.stages.map((s) => actuals.find((a) => a.stageId === s.id)?.planTrackUrl ?? '').join('|')
   useEffect(() => {
     let on = true
-    Promise.all(trip.stages.map(async (s) => {
+    const planUrls = planKey.split('|')
+    Promise.all(trip.stages.map(async (s, i) => {
       try {
-        const text = await (await fetch(`${base}${s.gpxUrl}`)).text()
+        const url = planUrls[i] || (s.gpxUrl ? `${base}${s.gpxUrl}` : '')
+        if (!url) throw new Error('kein GPX')
+        const text = await gpxText(url)
         return [s.id, analyzeStage(parseGpxProfile(text))] as const
       } catch {
         return [s.id, { passes: [], highest: 0, ascent: s.plannedAscent, km: s.plannedKm, profile: [], curves: 0 }] as const
       }
     })).then((entries) => { if (on) setStats(Object.fromEntries(entries)) })
     return () => { on = false }
-  }, [base])
+  }, [base, planKey])
   return stats
 }
