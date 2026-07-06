@@ -9,7 +9,7 @@ import { Sparkline } from '../components/Sparkline'
 import { IcCheck, IcCircle, IcBroadcast } from '../components/Icons'
 import { fmt, km, hm, dateRange, clock, stageStart } from '../lib/format'
 import { actualFor, isFresh } from '../lib/store'
-import type { StageStats } from '../lib/passes'
+import { usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual, RiderLocation } from '../types'
 
 interface Props {
@@ -24,6 +24,7 @@ interface Props {
 
 export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerName, onChangeName }: Props) {
   const [switching, setSwitching] = useState(false)
+  const planTracks = usePlanTracks(actuals)
   const ready = trip.stages.every((s) => stats[s.id])
 
   const totals = useMemo(() => {
@@ -125,7 +126,7 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
 
       {/* Karte */}
       <div style={{ marginBottom: 18 }}>
-        <MapView stages={trip.stages} height={240} />
+        <MapView stages={trip.stages.map((s) => { const pt = planTracks[s.id]; return pt?.length ? { ...s, track: pt, start: pt[0], end: pt[pt.length - 1] } : s })} height={240} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
