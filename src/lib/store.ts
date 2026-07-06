@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
 import { dataApiReady, loadData, loadLive, primeLocalData, type DataStore, type LiveStore, type Op } from './dataApi'
-import { dispatch, onOutboxDrop } from './outbox'
+import { dispatch, onOutboxDrop, useOutbox } from './outbox'
 import { toast } from './toast'
 
 const LIVE_POLL_MS = 45_000 // Betrachter pollen alle ~45 s
+const DATA_POLL_MS = 60_000 // Fotos/Zeiten/Kommentare: stiller Refresh ~1 Min
 const FRESH_MS = 15 * 60_000 // < 15 Min = "live"
 
 // Kein vorbelegter Demo-Inhalt mehr: die Tour startet im echten Zustand
@@ -26,6 +27,13 @@ export function useStore() {
   const dataRef = useRef(data)
   dataRef.current = data
 
+  // Wächter fuer den stillen Refresh: nie Serverstand druebernudeln,
+  // solange eigene Aenderungen noch unterwegs sind.
+  const { pending } = useOutbox()
+  const pendingRef = useRef(pending)
+  pendingRef.current = pending
+  const lastMutRef = useRef(0)
+
   const reload = useCallback(() => {
     setLoading(true); setError(false)
     loadData()
@@ -39,6 +47,39 @@ export function useStore() {
   }, [])
 
   useEffect(() => { reload() }, [reload])
+
+  // Stiller Hintergrund-Refresh: kein Spinner, Fehler werden geschluckt.
+  // Wird uebersprungen bzw. verworfen, wenn zwischenzeitlich lokal mutiert wurde
+  // oder die Outbox noch Eintraege hat (optimistische Updates bleiben erhalten).
+  const silentRefresh = useCallback(() => {
+    if (!dataApiReady) return
+    if (pendingRef.current > 0) return
+    const started = Date.now()
+    loadData()
+      .then((d) => {
+        if (pendingRef.current > 0) return
+        if (lastMutRef.current > started) return
+        setData(d)
+      })
+      .catch(() => { /* naechster Zyklus versucht es wieder */ })
+  }, [])
+
+  useEffect(() => {
+    if (!dataApiReady) return
+    const tick = () => { if (document.visibilityState !== 'hidden') silentRefresh() }
+    const t = setInterval(tick, DATA_POLL_MS)
+    const onVis = () => { if (document.visibilityState === 'visible') silentRefresh() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', onVis)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', onVis) }
+  }, [silentRefresh])
+
+  // Sobald die Outbox leer wird (alles gesendet): einmal frisch vom Server ziehen.
+  const prevPendingRef = useRef(pending)
+  useEffect(() => {
+    if (prevPendingRef.current > 0 && pending === 0) silentRefresh()
+    prevPendingRef.current = pending
+  }, [pending, silentRefresh])
 
   useEffect(() => {
     let active = true
@@ -78,6 +119,7 @@ export function useStore() {
 
   // Optimistisches Update + Operation ueber die Outbox (Offline-Puffer + Retry)
   const apply = useCallback((next: DataStore, op: Op) => {
+    lastMutRef.current = Date.now()
     setData(next)
     dispatch(op)
   }, [])
@@ -94,6 +136,7 @@ export function useStore() {
 
   // Optimistisch lokal einfuegen ohne Op (Foto wird offline gepuffert, Upload+Op via Outbox)
   const addPhotoLocal = useCallback((p: Photo) => {
+    lastMutRef.current = Date.now()
     setData((prev) => ({ ...prev, photos: [p, ...prev.photos] }))
   }, [])
 
