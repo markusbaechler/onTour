@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { trip } from '../data/trip'
 import { passNames } from '../data/passNames'
 import { parseGpx, parseGpxProfile, type ProfilePt } from './gpx'
-import type { Actual } from '../types'
+import type { Actual, LatLng } from '../types'
 
 // Pass = die Route kreuzt einen benannten Pass aus dem Gazetteer (src/data/passNames.ts,
 // OSM mountain_pass/saddle). PASS_CROSS_THRESHOLD justiert die Trefferzahl (~48).
@@ -126,11 +126,40 @@ async function gpxText(url: string): Promise<string> {
   return res.text()
 }
 
+const ELE_CACHE_PREFIX = 'alpes-ele:'
+const ELE_MAX_POINTS = 600 // Stichprobe fuers Nachschlagen (Genauigkeit vs. Requests)
+const ELE_CHUNK = 100 // max. Koordinaten je Open-Meteo-Request
+
+/**
+ * Schlaegt fehlende Hoehen beim freien Open-Meteo-Hoehendienst nach
+ * (Copernicus DEM). Ergebnis wird je GPX-URL in localStorage gecacht,
+ * damit das Nachschlagen pro Geraet nur einmal passiert.
+ */
+async function backfillEle(pts: ProfilePt[], cacheKey: string): Promise<ProfilePt[]> {
+  try {
+    const c = localStorage.getItem(ELE_CACHE_PREFIX + cacheKey)
+    if (c) return JSON.parse(c) as ProfilePt[]
+  } catch { /* Cache defekt -> frisch laden */ }
+  const step = Math.max(1, Math.ceil(pts.length / ELE_MAX_POINTS))
+  const sample = pts.filter((_, i) => i % step === 0)
+  const out: ProfilePt[] = []
+  for (let i = 0; i < sample.length; i += ELE_CHUNK) {
+    const part = sample.slice(i, i + ELE_CHUNK)
+    const lat = part.map((p) => p.lat.toFixed(5)).join(',')
+    const lng = part.map((p) => p.lng.toFixed(5)).join(',')
+    const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`)
+    if (!res.ok) throw new Error('Hoehendienst nicht erreichbar')
+    const ele: number[] = (await res.json()).elevation ?? []
+    part.forEach((p, k) => out.push({ lat: p.lat, lng: p.lng, ele: ele[k] ?? 0 }))
+  }
+  try { localStorage.setItem(ELE_CACHE_PREFIX + cacheKey, JSON.stringify(out)) } catch { /* Quota */ }
+  return out
+}
+
 /**
  * GPX -> Profilpunkte, zweistufig: bevorzugt Punkte MIT Hoehe (volle Statistik).
  * Fehlen Hoehendaten (typisch fuer Routen-Exporte mancher Planer), werden die
- * Punkte mit ele=0 uebernommen – km, Paesse (Hoehe aus Gazetteer) und Kurven
- * stimmen dann trotzdem; nur Anstieg/Hoehenprofil bleiben leer.
+ * Punkte mit ele=0 uebernommen; die Hoehen holt dann backfillEle nach.
  */
 function profileFrom(text: string): { profile: ProfilePt[]; hasEle: boolean } {
   const withEle = parseGpxProfile(text)
@@ -143,7 +172,7 @@ function profileFrom(text: string): { profile: ProfilePt[]; hasEle: boolean } {
  * Laedt alle Roadbook-GPX und liefert Pass-/Hoehen-/Anstiegsstatistik je Etappe.
  * Hat eine Etappe ein Ersatz-Roadbook (actual.planTrackUrl), wird DESSEN GPX
  * analysiert – Etappenkarte, Dashboard und Gesamttour rechnen dann damit.
- * Laedt automatisch neu, wenn sich ein Ersatz-Roadbook aendert.
+ * GPX ohne Hoehendaten: km/Kurven/Paesse aus den Punkten, Hoehen via Open-Meteo.
  */
 export function useStageStats(base: string, actuals: Actual[] = []): Record<string, StageStats> {
   const [stats, setStats] = useState<Record<string, StageStats>>({})
@@ -156,9 +185,17 @@ export function useStageStats(base: string, actuals: Actual[] = []): Record<stri
       try {
         const url = planUrls[i] || (s.gpxUrl ? `${base}${s.gpxUrl}` : '')
         if (!url) throw new Error('kein GPX')
-        const { profile } = profileFrom(await gpxText(url))
+        const { profile, hasEle } = profileFrom(await gpxText(url))
         if (profile.length < 2) throw new Error('keine Trackpunkte')
-        return [s.id, analyzeStage(profile)] as const
+        // km/Kurven/Paesse aus der vollen Punktdichte (Serpentinen nicht abkuerzen)
+        const baseStats = analyzeStage(profile)
+        if (hasEle) return [s.id, baseStats] as const
+        try {
+          const withEle = analyzeStage(await backfillEle(profile, url))
+          return [s.id, { ...baseStats, ascent: withEle.ascent, highest: withEle.highest, profile: withEle.profile }] as const
+        } catch {
+          return [s.id, baseStats] as const // Hoehendienst offline: Rest bleibt korrekt
+        }
       } catch {
         return [s.id, { passes: [], highest: 0, ascent: s.plannedAscent, km: s.plannedKm, profile: [], curves: 0 }] as const
       }
@@ -166,4 +203,24 @@ export function useStageStats(base: string, actuals: Actual[] = []): Record<stri
     return () => { on = false }
   }, [base, planKey])
   return stats
+}
+
+/**
+ * Laedt die Ersatz-Roadbook-Tracks (actual.planTrackUrl) als Punktlisten fuer die
+ * Karten: Linie, Start-/Ziel-Marker und Navigation folgen dann der Ersatzroute.
+ */
+export function usePlanTracks(actuals: Actual[]): Record<string, LatLng[]> {
+  const [tracks, setTracks] = useState<Record<string, LatLng[]>>({})
+  const sig = actuals.map((a) => `${a.stageId}:${a.planTrackUrl ?? ''}`).join('|')
+  useEffect(() => {
+    let on = true
+    const list = actuals.filter((a) => a.planTrackUrl)
+    Promise.all(list.map(async (a) => {
+      try { return [a.stageId, parseGpx(await gpxText(a.planTrackUrl!))] as const }
+      catch { return [a.stageId, [] as LatLng[]] as const }
+    })).then((entries) => { if (on) setTracks(Object.fromEntries(entries.filter(([, t]) => t.length))) })
+    return () => { on = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig])
+  return tracks
 }
