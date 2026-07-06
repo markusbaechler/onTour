@@ -10,7 +10,7 @@ import { Navigation } from './Navigation'
 import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
-import type { StageStats } from '../lib/passes'
+import { usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual, LatLng, Stage } from '../types'
 
 /** Laedt gefahrene Tracks (Actual.trackUrl) fuer die Kartenlinie; reagiert auf Aenderungen. */
@@ -43,6 +43,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [profileStage, setProfileStage] = useState<Stage | null>(null)
   const [highlight, setHighlight] = useState<LatLng | null>(null)
   const tracks = useRiddenTracks(actuals)
+  const planTracks = usePlanTracks(actuals)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
@@ -70,6 +71,9 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
         {trip.stages.map((s) => {
           const isOpen = open === s.id
           const a = actualFor(actuals, s.id)
+          // Ersatz-Roadbook vorhanden -> Karte/Marker/Navigation folgen der Ersatzroute
+          const pt = planTracks[s.id]
+          const eff = pt?.length ? { ...s, track: pt, start: pt[0], end: pt[pt.length - 1] } : s
           const unlocked = stageUnlocked(trip.startDate, s.day - 1)
           const lockHint = `erst ab ${stageDate(trip.startDate, s.day - 1)}`
           return (
@@ -100,7 +104,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                     </div>
 
                     {/* Karte */}
-                    <MapView stages={[s]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} highlight={highlight} height={190} />
+                    <MapView stages={[eff]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} highlight={highlight} height={190} />
 
                     {/* Kennzahlenzeile */}
                     <div style={{ display: 'flex', gap: 6, margin: '12px 0' }}>
@@ -136,11 +140,11 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                     )}
 
                     {/* Aktionen */}
-                    <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setNavStage(s)}>
+                    <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setNavStage(eff)}>
                       <IcRoute size={18} /> Navigation starten
                     </button>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <a className="btn ghost" href={`${base}${s.gpxUrl ?? ''}`} download style={{ flex: 1, textDecoration: 'none', fontSize: 13 }}>
+                      <a className="btn ghost" href={a?.planTrackUrl?.startsWith('http') ? a.planTrackUrl : `${base}${s.gpxUrl ?? ''}`} download style={{ flex: 1, textDecoration: 'none', fontSize: 13 }}>
                         <IcDownload size={17} /> Roadbook
                       </a>
                       <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setGpxStage(s)}>
