@@ -28,7 +28,7 @@ export default function App() {
   const [autoShare, setAutoShare] = useAutoShare()
   const geo = useGeoShare(store.setLocation, { riderName: viewer.name, autoShare })
   const base = import.meta.env.BASE_URL
-  const stageStats = useStageStats(base)
+  const stageStats = useStageStats(base, store.actuals)
 
   // Beim Live-gehen (Wechsel auf "teilt jetzt") die anderen per Push benachrichtigen.
   // Das Backend drosselt, damit Vordergrund-Wechsel nicht mehrfach pingen.
