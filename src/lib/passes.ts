@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from 'react'
 import { trip } from '../data/trip'
 import { passNames } from '../data/passNames'
-import { parseGpxProfile, type ProfilePt } from './gpx'
+import { parseGpx, parseGpxProfile, type ProfilePt } from './gpx'
 import type { Actual } from '../types'
 
 // Pass = die Route kreuzt einen benannten Pass aus dem Gazetteer (src/data/passNames.ts,
@@ -128,6 +127,19 @@ async function gpxText(url: string): Promise<string> {
 }
 
 /**
+ * GPX -> Profilpunkte, zweistufig: bevorzugt Punkte MIT Hoehe (volle Statistik).
+ * Fehlen Hoehendaten (typisch fuer Routen-Exporte mancher Planer), werden die
+ * Punkte mit ele=0 uebernommen – km, Paesse (Hoehe aus Gazetteer) und Kurven
+ * stimmen dann trotzdem; nur Anstieg/Hoehenprofil bleiben leer.
+ */
+function profileFrom(text: string): { profile: ProfilePt[]; hasEle: boolean } {
+  const withEle = parseGpxProfile(text)
+  if (withEle.length >= 2) return { profile: withEle, hasEle: true }
+  const flat = parseGpx(text).map(([lat, lng]) => ({ lat, lng, ele: 0 }))
+  return { profile: flat, hasEle: false }
+}
+
+/**
  * Laedt alle Roadbook-GPX und liefert Pass-/Hoehen-/Anstiegsstatistik je Etappe.
  * Hat eine Etappe ein Ersatz-Roadbook (actual.planTrackUrl), wird DESSEN GPX
  * analysiert – Etappenkarte, Dashboard und Gesamttour rechnen dann damit.
@@ -144,8 +156,9 @@ export function useStageStats(base: string, actuals: Actual[] = []): Record<stri
       try {
         const url = planUrls[i] || (s.gpxUrl ? `${base}${s.gpxUrl}` : '')
         if (!url) throw new Error('kein GPX')
-        const text = await gpxText(url)
-        return [s.id, analyzeStage(parseGpxProfile(text))] as const
+        const { profile } = profileFrom(await gpxText(url))
+        if (profile.length < 2) throw new Error('keine Trackpunkte')
+        return [s.id, analyzeStage(profile)] as const
       } catch {
         return [s.id, { passes: [], highest: 0, ascent: s.plannedAscent, km: s.plannedKm, profile: [], curves: 0 }] as const
       }
