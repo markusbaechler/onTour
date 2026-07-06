@@ -224,3 +224,50 @@ export function usePlanTracks(actuals: Actual[]): Record<string, LatLng[]> {
   }, [sig])
   return tracks
 }
+
+export interface PlanPlaces { from: string; to: string }
+const PLACE_CACHE_PREFIX = 'alpes-place:'
+
+/** Ortsname zu Koordinaten (freier Client-Geocoder, deutschsprachig). */
+async function placeName(lat: number, lng: number): Promise<string> {
+  const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=de`)
+  if (!res.ok) throw new Error('Geocoder nicht erreichbar')
+  const j = await res.json()
+  return String(j.city || j.locality || j.principalSubdivision || '').trim()
+}
+
+/**
+ * Ermittelt Start-/Zielort einer Ersatzroute per Reverse-Geocoding des ersten/
+ * letzten Trackpunkts. Ergebnis wird je Route dauerhaft gecacht; ist der
+ * Geocoder nicht erreichbar, bleiben die geplanten Ortsnamen stehen.
+ */
+export function usePlanPlaces(actuals: Actual[], planTracks: Record<string, LatLng[]>): Record<string, PlanPlaces> {
+  const [places, setPlaces] = useState<Record<string, PlanPlaces>>({})
+  const sig = Object.keys(planTracks).sort().map((id) => `${id}:${actuals.find((a) => a.stageId === id)?.planTrackUrl ?? ''}`).join('|')
+  useEffect(() => {
+    let on = true
+    ;(async () => {
+      const out: Record<string, PlanPlaces> = {}
+      for (const [id, pts] of Object.entries(planTracks)) {
+        if (pts.length < 2) continue
+        const key = PLACE_CACHE_PREFIX + (actuals.find((a) => a.stageId === id)?.planTrackUrl ?? id)
+        try {
+          const c = localStorage.getItem(key)
+          if (c) { out[id] = JSON.parse(c) as PlanPlaces; continue }
+        } catch { /* Cache defekt -> frisch */ }
+        try {
+          const from = await placeName(pts[0][0], pts[0][1])
+          const to = await placeName(pts[pts.length - 1][0], pts[pts.length - 1][1])
+          if (from && to) {
+            out[id] = { from, to }
+            try { localStorage.setItem(key, JSON.stringify(out[id])) } catch { /* Quota */ }
+          }
+        } catch { /* Geocoder offline: geplante Namen bleiben */ }
+      }
+      if (on && Object.keys(out).length) setPlaces(out)
+    })()
+    return () => { on = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig])
+  return places
+}
