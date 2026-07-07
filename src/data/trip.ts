@@ -7,7 +7,7 @@ export const trip: Trip = {
   title: 'bbz Cannonball',
   subtitle: 'Tour de France',
   startDate: '2026-07-04',
-  endDate: '2026-07-10',
+  endDate: '2026-07-11',
   riders: ['Markus', 'Alex', 'Marco'],
   stages: [
     {
@@ -293,8 +293,20 @@ export const trip: Trip = {
       ],
     },
     {
-      id: "t5",
+      id: "t8", // neue Zwischen-Etappe (Tag 5); ID bewusst frisch, damit
+      // bestehende Daten (Fotos/Zeiten) an t5-t7 haengen bleiben
       day: 5,
+      from: "Castellane",
+      to: "Ziel folgt (Roadbook laden)",
+      plannedKm: 0,
+      plannedAscent: 0,
+      cols: [],
+      start: [43.84636, 6.51349],
+      end: [43.84636, 6.51349],
+    },
+    {
+      id: "t5",
+      day: 6,
       from: "Castellane",
       to: "Die",
       plannedKm: 229,
@@ -363,7 +375,7 @@ export const trip: Trip = {
     },
     {
       id: "t6",
-      day: 6,
+      day: 7,
       from: "Die",
       to: "Divonne-les-Bains",
       plannedKm: 331,
@@ -434,7 +446,7 @@ export const trip: Trip = {
     },
     {
       id: "t7",
-      day: 7,
+      day: 8,
       from: "Divonne-les-Bains",
       to: "Huebwiesenstrasse",
       plannedKm: 291,
