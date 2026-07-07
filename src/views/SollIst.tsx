@@ -1,8 +1,10 @@
+
 import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { RiddenToggle } from '../components/RiddenToggle'
 import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { actualFor } from '../lib/store'
+import { usePlanPlaces, usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual } from '../types'
 
 function Delta({ planned, actual, unit }: { planned: number; actual?: number; unit: string }) {
@@ -16,8 +18,13 @@ function Delta({ planned, actual, unit }: { planned: number; actual?: number; un
   )
 }
 
-export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a: Actual) => void }) {
+export function SollIst({ actuals, stats, onUpsert }: { actuals: Actual[]; stats: Record<string, StageStats>; onUpsert: (a: Actual) => void }) {
   const [edit, setEdit] = useState<string | null>(null)
+  const planTracks = usePlanTracks(actuals)
+  const planPlaces = usePlanPlaces(actuals, planTracks)
+  // Soll aus der GPX-Analyse (inkl. Ersatz-Roadbook); Planwert nur als Fallback
+  const sollKm = (id: string, fallback: number) => stats[id]?.km ?? fallback
+  const sollHm = (id: string, fallback: number) => stats[id]?.ascent ?? fallback
 
   const setRidden = (stageId: string, ridden: boolean) => {
     const prev = actualFor(actuals, stageId)
@@ -25,12 +32,12 @@ export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a
   }
 
   const totals = useMemo(() => {
-    const pKm = trip.stages.reduce((s, x) => s + x.plannedKm, 0)
-    const pHm = trip.stages.reduce((s, x) => s + x.plannedAscent, 0)
+    const pKm = trip.stages.reduce((s, x) => s + sollKm(x.id, x.plannedKm), 0)
+    const pHm = trip.stages.reduce((s, x) => s + sollHm(x.id, x.plannedAscent), 0)
     const aKm = trip.stages.reduce((s, x) => s + (actualFor(actuals, x.id)?.actualKm ?? 0), 0)
     const aHm = trip.stages.reduce((s, x) => s + (actualFor(actuals, x.id)?.actualAscent ?? 0), 0)
     return { pKm, pHm, aKm, aHm }
-  }, [actuals])
+  }, [actuals, stats]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="view">
@@ -64,7 +71,7 @@ export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
                 <div style={{ fontSize: 14, fontWeight: 500, minWidth: 0 }}>
                   <span className="mono" style={{ color: 'var(--signal)', marginRight: 8 }}>T{s.day}</span>
-                  {s.from} → {s.to}
+                  {planPlaces[s.id]?.from ?? s.from} → {planPlaces[s.id]?.to ?? s.to}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   <RiddenToggle ridden={!!a?.ridden} onChange={(r) => setRidden(s.id, r)} disabled={!unlocked} hint={`erst ab ${stageDate(trip.startDate, s.day - 1)}`} />
@@ -83,12 +90,12 @@ export function SollIst({ actuals, onUpsert }: { actuals: Actual[]; onUpsert: (a
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', fontSize: 13 }}>
                 <div>
                   <span className="muted" style={{ fontSize: 11 }}>Distanz</span>
-                  <div className="mono">{km(s.plannedKm)} <span className="muted">→</span> {a?.actualKm != null ? km(a.actualKm) : '–'}</div>
+                  <div className="mono">{km(sollKm(s.id, s.plannedKm))} <span className="muted">→</span> {a?.actualKm != null ? km(a.actualKm) : '–'}</div>
                 </div>
-                <Delta planned={s.plannedKm} actual={a?.actualKm} unit="km" />
+                <Delta planned={sollKm(s.id, s.plannedKm)} actual={a?.actualKm} unit="km" />
                 <div style={{ textAlign: 'right' }}>
                   <span className="muted" style={{ fontSize: 11 }}>Höhe</span>
-                  <div className="mono">{hm(s.plannedAscent)} <span className="muted">→</span> {a?.actualAscent != null ? hm(a.actualAscent) : '–'}</div>
+                  <div className="mono">{hm(sollHm(s.id, s.plannedAscent))} <span className="muted">→</span> {a?.actualAscent != null ? hm(a.actualAscent) : '–'}</div>
                 </div>
               </div>
 
