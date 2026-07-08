@@ -58,7 +58,7 @@ export function GpxManager({ stage, actual, base, istLocked, istLockHint, onUpse
   }
   function resetPlan() {
     removeLocalGpx(actual?.planTrackUrl)
-    write({ planTrackUrl: undefined })
+    write({ planTrackUrl: '' })
   }
 
   async function setIst(file: File) {
@@ -75,7 +75,7 @@ export function GpxManager({ stage, actual, base, istLocked, istLockHint, onUpse
   }
   function removeIst() {
     removeLocalGpx(actual?.trackUrl)
-    write({ trackUrl: undefined })
+    write({ trackUrl: '' })
   }
 
   async function download() {
