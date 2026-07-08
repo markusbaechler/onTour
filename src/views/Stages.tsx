@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react'
 import { trip } from '../data/trip'
 import { ColBadge } from '../components/ColBadge'
@@ -10,7 +11,7 @@ import { Navigation } from './Navigation'
 import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
-import { usePlanPlaces, usePlanTracks, type StageStats } from '../lib/passes'
+import { useChainedPlaces, usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual, LatLng, Stage } from '../types'
 
 /** Laedt gefahrene Tracks (Actual.trackUrl) fuer die Kartenlinie; reagiert auf Aenderungen. */
@@ -44,7 +45,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [highlight, setHighlight] = useState<LatLng | null>(null)
   const tracks = useRiddenTracks(actuals)
   const planTracks = usePlanTracks(actuals)
-  const planPlaces = usePlanPlaces(actuals, planTracks)
+  const planPlaces = useChainedPlaces(actuals, planTracks)
   const refs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
