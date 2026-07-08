@@ -4,7 +4,7 @@ import { trip } from '../data/trip'
 import { RiddenToggle } from '../components/RiddenToggle'
 import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { actualFor } from '../lib/store'
-import { usePlanPlaces, usePlanTracks, type StageStats } from '../lib/passes'
+import { useChainedPlaces, usePlanTracks, type StageStats } from '../lib/passes'
 import type { Actual } from '../types'
 
 function Delta({ planned, actual, unit }: { planned: number; actual?: number; unit: string }) {
@@ -21,7 +21,7 @@ function Delta({ planned, actual, unit }: { planned: number; actual?: number; un
 export function SollIst({ actuals, stats, onUpsert }: { actuals: Actual[]; stats: Record<string, StageStats>; onUpsert: (a: Actual) => void }) {
   const [edit, setEdit] = useState<string | null>(null)
   const planTracks = usePlanTracks(actuals)
-  const planPlaces = usePlanPlaces(actuals, planTracks)
+  const planPlaces = useChainedPlaces(actuals, planTracks)
   // Soll aus der GPX-Analyse (inkl. Ersatz-Roadbook); Planwert nur als Fallback
   const sollKm = (id: string, fallback: number) => stats[id]?.km ?? fallback
   const sollHm = (id: string, fallback: number) => stats[id]?.ascent ?? fallback
