@@ -126,7 +126,7 @@ async function gpxText(url: string): Promise<string> {
   return res.text()
 }
 
-const ELE_CACHE_PREFIX = 'alpes-ele:'
+const ELE_CACHE_PREFIX = 'alpes-ele2:' // v2: buestet evtl. vergiftete Alt-Caches
 const ELE_MAX_POINTS = 600 // Stichprobe fuers Nachschlagen (Genauigkeit vs. Requests)
 const ELE_CHUNK = 100 // max. Koordinaten je Open-Meteo-Request
 
@@ -138,21 +138,58 @@ const ELE_CHUNK = 100 // max. Koordinaten je Open-Meteo-Request
 async function backfillEle(pts: ProfilePt[], cacheKey: string): Promise<ProfilePt[]> {
   try {
     const c = localStorage.getItem(ELE_CACHE_PREFIX + cacheKey)
-    if (c) return JSON.parse(c) as ProfilePt[]
+    if (c) {
+      const parsed = JSON.parse(c) as ProfilePt[]
+      if (validEle(parsed)) return parsed
+    }
   } catch { /* Cache defekt -> frisch laden */ }
   const step = Math.max(1, Math.ceil(pts.length / ELE_MAX_POINTS))
   const sample = pts.filter((_, i) => i % step === 0)
+  let out: ProfilePt[]
+  try { out = await eleOpenMeteo(sample) } catch { out = await eleOpenElevation(sample) }
+  if (!validEle(out)) throw new Error('Hoehendaten unplausibel')
+  try { localStorage.setItem(ELE_CACHE_PREFIX + cacheKey, JSON.stringify(out)) } catch { /* Quota */ }
+  return out
+}
+
+/** Plausibel = vollstaendig, endliche Zahlen, echte Varianz (Alpenroute ist nicht flach). */
+function validEle(pts: ProfilePt[]): boolean {
+  if (!Array.isArray(pts) || pts.length < 2) return false
+  const eles = pts.map((p) => p.ele)
+  if (!eles.every((e) => Number.isFinite(e))) return false
+  return Math.max(...eles) - Math.min(...eles) >= 1
+}
+
+async function eleOpenMeteo(sample: ProfilePt[]): Promise<ProfilePt[]> {
   const out: ProfilePt[] = []
   for (let i = 0; i < sample.length; i += ELE_CHUNK) {
     const part = sample.slice(i, i + ELE_CHUNK)
     const lat = part.map((p) => p.lat.toFixed(5)).join(',')
     const lng = part.map((p) => p.lng.toFixed(5)).join(',')
     const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`)
-    if (!res.ok) throw new Error('Hoehendienst nicht erreichbar')
-    const ele: number[] = (await res.json()).elevation ?? []
-    part.forEach((p, k) => out.push({ lat: p.lat, lng: p.lng, ele: ele[k] ?? 0 }))
+    if (!res.ok) throw new Error('open-meteo nicht erreichbar')
+    const ele: unknown = (await res.json()).elevation
+    if (!Array.isArray(ele) || ele.length !== part.length) throw new Error('open-meteo Antwort unvollstaendig')
+    part.forEach((p, k) => out.push({ lat: p.lat, lng: p.lng, ele: Number(ele[k]) }))
   }
-  try { localStorage.setItem(ELE_CACHE_PREFIX + cacheKey, JSON.stringify(out)) } catch { /* Quota */ }
+  return out
+}
+
+/** Fallback-Anbieter, falls open-meteo blockiert/gestoert ist. */
+async function eleOpenElevation(sample: ProfilePt[]): Promise<ProfilePt[]> {
+  const out: ProfilePt[] = []
+  for (let i = 0; i < sample.length; i += ELE_CHUNK) {
+    const part = sample.slice(i, i + ELE_CHUNK)
+    const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locations: part.map((p) => ({ latitude: p.lat, longitude: p.lng })) }),
+    })
+    if (!res.ok) throw new Error('open-elevation nicht erreichbar')
+    const results: Array<{ elevation: number }> = (await res.json()).results ?? []
+    if (results.length !== part.length) throw new Error('open-elevation Antwort unvollstaendig')
+    part.forEach((p, k) => out.push({ lat: p.lat, lng: p.lng, ele: Number(results[k].elevation) }))
+  }
   return out
 }
 
@@ -270,4 +307,24 @@ export function usePlanPlaces(actuals: Actual[], planTracks: Record<string, LatL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig])
   return places
+}
+
+/**
+ * Wie usePlanPlaces, aber mit Verkettung: Hat eine Etappe kein eigenes
+ * Ersatz-Roadbook, erbt sie als Startort das (geocodete) Ziel der direkten
+ * Vorgaengerin mit Ersatzroute - so stimmt der Anschluss (z. B. "Menton ->").
+ */
+export function useChainedPlaces(actuals: Actual[], planTracks: Record<string, LatLng[]>): Record<string, Partial<PlanPlaces>> {
+  const own = usePlanPlaces(actuals, planTracks)
+  const out: Record<string, Partial<PlanPlaces>> = {}
+  let prevTo: string | undefined
+  for (const s of trip.stages) {
+    const o = own[s.id]
+    const e: Partial<PlanPlaces> = {}
+    if (o) { e.from = o.from; e.to = o.to }
+    else if (prevTo) { e.from = prevTo }
+    if (e.from || e.to) out[s.id] = e
+    prevTo = o?.to // nur die direkte Nachfolgerin erbt
+  }
+  return out
 }
