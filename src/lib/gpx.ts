@@ -1,10 +1,34 @@
 import type { LatLng } from '../types'
 
+
+/**
+ * Namespace-/Dialekt-tolerante Punktsuche: findet trkpt/rtept unabhaengig von
+ * Praefixen (z. B. <ns:trkpt>) und faellt bei reinen Wegpunkt-Dateien auf <wpt>
+ * zurueck. Deckt damit die Exporte gaengiger Routenplaner ab.
+ */
+function pointEls(doc: Document): Element[] {
+  const root = doc.documentElement
+  const all = root ? [root as Element, ...Array.from(root.querySelectorAll('*'))] : []
+  const by = (n: string) => all.filter((e) => (e.localName || e.tagName).replace(/^.*:/, '') === n)
+  const tp = by('trkpt')
+  if (tp.length) return tp
+  const rp = by('rtept')
+  if (rp.length) return rp
+  return by('wpt')
+}
+/** Erstes <ele>-Kind eines Punkts, praefix-tolerant. */
+function eleOf(p: Element): number {
+  for (const c of Array.from(p.children)) {
+    if ((c.localName || c.tagName).replace(/^.*:/, '') === 'ele') return parseFloat(c.textContent ?? '')
+  }
+  return NaN
+}
+
 /** Parst GPX-Text zu einer Liste von [lat, lng]. Unterstuetzt trkpt und rtept. */
 export function parseGpx(text: string): LatLng[] {
   const doc = new DOMParser().parseFromString(text, 'application/xml')
   if (doc.querySelector('parsererror')) return []
-  const pts = doc.querySelectorAll('trkpt, rtept')
+  const pts = pointEls(doc)
   const out: LatLng[] = []
   pts.forEach((p) => {
     const lat = parseFloat(p.getAttribute('lat') ?? '')
@@ -52,7 +76,7 @@ export interface GpxDetail {
 export function parseGpxDetailed(text: string): GpxDetail {
   const doc = new DOMParser().parseFromString(text, 'application/xml')
   if (doc.querySelector('parsererror')) return { track: [], ascent: 0, km: 0 }
-  const pts = doc.querySelectorAll('trkpt, rtept')
+  const pts = pointEls(doc)
   const track: LatLng[] = []
   let ascent = 0
   let prevEle: number | null = null
@@ -61,8 +85,7 @@ export function parseGpxDetailed(text: string): GpxDetail {
     const lng = parseFloat(p.getAttribute('lon') ?? '')
     if (Number.isNaN(lat) || Number.isNaN(lng)) return
     track.push([lat, lng])
-    const eleEl = p.querySelector('ele')
-    const ele = eleEl ? parseFloat(eleEl.textContent ?? '') : NaN
+    const ele = eleOf(p)
     if (!Number.isNaN(ele)) {
       if (prevEle !== null && ele > prevEle) ascent += ele - prevEle
       prevEle = ele
@@ -79,10 +102,10 @@ export function parseGpxProfile(text: string): ProfilePt[] {
   const doc = new DOMParser().parseFromString(text, 'application/xml')
   if (doc.querySelector('parsererror')) return []
   const out: ProfilePt[] = []
-  doc.querySelectorAll('trkpt, rtept').forEach((p) => {
+  pointEls(doc).forEach((p) => {
     const lat = parseFloat(p.getAttribute('lat') ?? '')
     const lng = parseFloat(p.getAttribute('lon') ?? '')
-    const ele = parseFloat(p.querySelector('ele')?.textContent ?? '')
+    const ele = eleOf(p)
     if (!Number.isNaN(lat) && !Number.isNaN(lng) && !Number.isNaN(ele)) out.push({ lat, lng, ele })
   })
   return out
