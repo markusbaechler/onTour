@@ -7,7 +7,8 @@ import type { Actual, LatLng } from '../types'
 // Pass = die Route kreuzt einen benannten Pass aus dem Gazetteer (src/data/passNames.ts,
 // OSM mountain_pass/saddle). PASS_CROSS_THRESHOLD justiert die Trefferzahl (~48).
 export const PASS_CROSS_THRESHOLD = 350 // m – bis hierher gilt ein Pass als gekreuzt
-const SMOOTH_WINDOW = 3 // Glaettung des Hoehenprofils gegen GPS-Rauschen
+const DENSE_SPACING_M = 100 // Punktabstand unter dem ein Track als "aufgezeichnet" gilt
+const DENSE_SMOOTH = 5 // Glaettungsfenster fuer dichte (aufgezeichnete) Tracks
 export const CURVE_MIN_ANGLE = 35 // Grad – ab diesem Richtungswechsel zaehlt es als Kurve
 const CURVE_MIN_STEP_M = 70 // Mindestabstand zwischen Kurven-Messpunkten (gegen Rauschen)
 const PROFILE_SAMPLES = 180 // Punkte des downgesampleten Hoehenprofils
@@ -46,13 +47,26 @@ function bearing(aLat: number, aLng: number, bLat: number, bLng: number): number
   return (deg(Math.atan2(y, x)) + 360) % 360
 }
 
-function smoothEle(pts: ProfilePt[], w: number): number[] {
-  const e = pts.map((p) => p.ele)
-  return e.map((_, i) => {
-    let s = 0, c = 0
-    for (let j = -w; j <= w; j++) { const k = i + j; if (k >= 0 && k < e.length) { s += e[k]; c++ } }
-    return s / c
-  })
+/**
+ * Anstieg adaptiv: Planer-/DEM-Dateien (duenne Punkte) werden roh summiert -
+ * das reproduziert die Planer-Hoehenmeter exakt. Aufgezeichnete Tracks (dichte
+ * Punkte) laufen durch eine kleine Hysterese, damit Messrauschen nicht zaehlt.
+ */
+function climb(raw: number[], dense: boolean): number {
+  // Dichte Tracks (5-20 m Abstand): Glaettung ueber wenige Sekunden Fahrt -
+  // toetet Messrauschen, laesst echte Anstiege unberuehrt. Duenne
+  // Planer-Dateien bleiben roh, das reproduziert die Planer-Werte exakt.
+  let ele = raw
+  if (dense) {
+    ele = raw.map((_, i) => {
+      let s = 0, c = 0
+      for (let j = -DENSE_SMOOTH; j <= DENSE_SMOOTH; j++) { const k = i + j; if (k >= 0 && k < raw.length) { s += raw[k]; c++ } }
+      return s / c
+    })
+  }
+  let a = 0
+  for (let i = 1; i < ele.length; i++) if (ele[i] > ele[i - 1]) a += ele[i] - ele[i - 1]
+  return Math.round(a)
 }
 
 /**
@@ -62,7 +76,7 @@ function smoothEle(pts: ProfilePt[], w: number): number[] {
  */
 export function analyzeStage(profile: ProfilePt[]): StageStats {
   if (profile.length < 2) return { passes: [], highest: 0, ascent: 0, km: 0, profile: [], curves: 0 }
-  const ele = smoothEle(profile, SMOOTH_WINDOW)
+  const ele = profile.map((p) => p.ele)
   const cum = [0]
   for (let i = 1; i < profile.length; i++) cum.push(cum[i - 1] + meters(profile[i - 1].lat, profile[i - 1].lng, profile[i].lat, profile[i].lng))
 
@@ -82,10 +96,9 @@ export function analyzeStage(profile: ProfilePt[]): StageStats {
   }
   passes.sort((a, b) => a.distFromStart - b.distFromStart)
 
-  let ascent = 0
-  for (let i = 1; i < ele.length; i++) if (ele[i] > ele[i - 1]) ascent += ele[i] - ele[i - 1]
-
   const total = cum[cum.length - 1]
+  const dense = total / (profile.length - 1) < DENSE_SPACING_M
+  const ascent = climb(ele, dense)
 
   // Downgesampletes Hoehenprofil (gleichmaessig nach Distanz)
   const sampleProfile: ProfilePoint[] = []
@@ -109,7 +122,7 @@ export function analyzeStage(profile: ProfilePt[]): StageStats {
     if (Math.abs(turn) > CURVE_MIN_ANGLE) curves++
   }
 
-  return { passes, highest: Math.round(Math.max(...ele)), ascent: Math.round(ascent), km: Math.round(total / 1000), profile: sampleProfile, curves }
+  return { passes, highest: Math.round(Math.max(...ele)), ascent, km: Math.round(total / 1000), profile: sampleProfile, curves }
 }
 
 const LOCAL_GPX_PREFIX = 'alpes-gpx:'
