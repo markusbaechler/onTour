@@ -159,7 +159,8 @@ async function backfillEle(pts: ProfilePt[], cacheKey: string): Promise<ProfileP
   const step = Math.max(1, Math.ceil(pts.length / ELE_MAX_POINTS))
   const sample = pts.filter((_, i) => i % step === 0)
   let out: ProfilePt[]
-  try { out = await eleOpenMeteo(sample) } catch { out = await eleOpenElevation(sample) }
+  try { out = await eleViaBackend(sample, cacheKey) }
+  catch { try { out = await eleOpenMeteo(sample) } catch { out = await eleOpenElevation(sample) } }
   // DEM-Ausreisser (Schluchten, Interpolationsfehler) daempfen: Median ueber 3 Nachbarn
   for (let i = 1; i < out.length - 1; i++) {
     const t = [out[i - 1].ele, out[i].ele, out[i + 1].ele].sort((a, b) => a - b)
@@ -176,6 +177,24 @@ function validEle(pts: ProfilePt[]): boolean {
   const eles = pts.map((p) => p.ele)
   if (!eles.every((e) => Number.isFinite(e))) return false
   return Math.max(...eles) - Math.min(...eles) >= 1
+}
+
+/**
+ * Bevorzugter Weg: eigener Backend-Proxy (Apps Script). Umgeht Browser-/
+ * Mobilnetz-Restriktionen und cacht serverseitig einmal fuer alle Geraete.
+ */
+async function eleViaBackend(sample: ProfilePt[], cacheKey: string): Promise<ProfilePt[]> {
+  const api = import.meta.env.VITE_DATA_API
+  if (!api) throw new Error('kein Backend')
+  const res = await fetch(api, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ op: 'elevation', key: cacheKey, lats: sample.map((p) => +p.lat.toFixed(5)), lngs: sample.map((p) => +p.lng.toFixed(5)) }),
+  })
+  if (!res.ok) throw new Error('Backend nicht erreichbar')
+  const j = await res.json()
+  if (!j.ok || !Array.isArray(j.elevation) || j.elevation.length !== sample.length) throw new Error('Backend-Antwort unbrauchbar')
+  return sample.map((p, i) => ({ lat: p.lat, lng: p.lng, ele: Number(j.elevation[i]) }))
 }
 
 async function eleOpenMeteo(sample: ProfilePt[]): Promise<ProfilePt[]> {
