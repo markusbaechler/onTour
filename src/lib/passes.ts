@@ -160,6 +160,11 @@ async function backfillEle(pts: ProfilePt[], cacheKey: string): Promise<ProfileP
   const sample = pts.filter((_, i) => i % step === 0)
   let out: ProfilePt[]
   try { out = await eleOpenMeteo(sample) } catch { out = await eleOpenElevation(sample) }
+  // DEM-Ausreisser (Schluchten, Interpolationsfehler) daempfen: Median ueber 3 Nachbarn
+  for (let i = 1; i < out.length - 1; i++) {
+    const t = [out[i - 1].ele, out[i].ele, out[i + 1].ele].sort((a, b) => a - b)
+    out[i] = { ...out[i], ele: t[1] }
+  }
   if (!validEle(out)) throw new Error('Hoehendaten unplausibel')
   try { localStorage.setItem(ELE_CACHE_PREFIX + cacheKey, JSON.stringify(out)) } catch { /* Quota */ }
   return out
@@ -218,6 +223,16 @@ function profileFrom(text: string): { profile: ProfilePt[]; hasEle: boolean } {
   return { profile: flat, hasEle: false }
 }
 
+/** Anstieg fuer DEM-nachgeschlagene Hoehen: 8 m Hysterese schluckt Modellrauschen. */
+function demAscent(ele: number[]): number {
+  let a = 0, base = ele[0]
+  for (let i = 1; i < ele.length; i++) {
+    if (ele[i] > base + 8) { a += ele[i] - base; base = ele[i] }
+    else if (ele[i] < base) base = ele[i]
+  }
+  return Math.round(a)
+}
+
 /**
  * Laedt alle Roadbook-GPX und liefert Pass-/Hoehen-/Anstiegsstatistik je Etappe.
  * Hat eine Etappe ein Ersatz-Roadbook (actual.planTrackUrl), wird DESSEN GPX
@@ -241,8 +256,11 @@ export function useStageStats(base: string, actuals: Actual[] = []): Record<stri
         const baseStats = analyzeStage(profile)
         if (hasEle) return [s.id, baseStats] as const
         try {
-          const withEle = analyzeStage(await backfillEle(profile, url))
-          return [s.id, { ...baseStats, ascent: withEle.ascent, highest: withEle.highest, profile: withEle.profile }] as const
+          const filled = await backfillEle(profile, url)
+          const withEle = analyzeStage(filled)
+          // Nachgeschlagene DEM-Hoehen rauschen bei grobem Punktabstand:
+          // Anstieg mit Hysterese statt Roh-Summe, sonst entstehen Phantom-hm.
+          return [s.id, { ...baseStats, ascent: demAscent(filled.map((x) => x.ele)), highest: withEle.highest, profile: withEle.profile }] as const
         } catch {
           return [s.id, baseStats] as const // Hoehendienst offline: Rest bleibt korrekt
         }
