@@ -174,7 +174,7 @@ export function Photobook({
       )}
 
       {showBook && <PhotobookBuilder photos={photos} stats={stats} base={base} onClose={() => setShowBook(false)} />}
-      {showVideo && <VideoBuilder photos={photos} onClose={() => setShowVideo(false)} />}
+      {showVideo && <VideoBuilder photos={photos} comments={comments} reactions={reactions} stats={stats} onClose={() => setShowVideo(false)} />}
     </div>
   )
 }

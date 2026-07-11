@@ -17,6 +17,17 @@ function thumbFrom(secureUrl: string): string {
 }
 
 /**
+ * Motiv-bewusster Zuschnitt fuer den Video-Export: Cloudinary c_fill,g_auto (Smart-Crop)
+ * auf die gewuenschte Groesse. Nicht-Cloudinary-URLs bleiben unveraendert (Roh-Center-Cover).
+ */
+export function smartCropUrl(url: string, w: number, h: number): string {
+  if (url.includes('res.cloudinary.com') && url.includes('/upload/') && !url.includes('/upload/c_')) {
+    return url.replace('/upload/', `/upload/c_fill,g_auto,w_${w},h_${h},q_auto,f_auto/`)
+  }
+  return url
+}
+
+/**
  * Liest die GPS-Koordinaten (Aufnahmeort) direkt aus dem EXIF der JPEG-Datei –
  * clientseitig, bevor irgendetwas hochgeladen wird. Gibt null zurueck, wenn die
  * Datei kein JPEG ist oder kein GPS traegt (z. B. weil iOS es entfernt hat).

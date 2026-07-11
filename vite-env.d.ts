@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_TRIP_PASSWORD?: string
   // Web-Push: oeffentlicher VAPID-Schluessel (Privater liegt im Sende-Dienst)
   readonly VITE_VAPID_PUBLIC_KEY?: string
+  // Optionale URL zum NIMA-tfjs-GraphModel (KI-Aesthetik); fehlt = Heuristik-Modus
+  readonly VITE_NIMA_MODEL_URL?: string
 }
 
 interface ImportMeta {
