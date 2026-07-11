@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { trip } from '../data/trip'
 import { passNames } from '../data/passNames'
 import { parseGpx, parseGpxProfile, type ProfilePt } from './gpx'
+import { generatedStats } from '../data/stages.generated'
 import type { Actual, LatLng } from '../types'
 
 // Pass = die Route kreuzt einen benannten Pass aus dem Gazetteer (src/data/passNames.ts,
@@ -253,13 +254,16 @@ function demAscent(ele: number[]): number {
 }
 
 /**
- * Laedt alle Roadbook-GPX und liefert Pass-/Hoehen-/Anstiegsstatistik je Etappe.
- * Hat eine Etappe ein Ersatz-Roadbook (actual.planTrackUrl), wird DESSEN GPX
- * analysiert – Etappenkarte, Dashboard und Gesamttour rechnen dann damit.
- * GPX ohne Hoehendaten: km/Kurven/Paesse aus den Punkten, Hoehen via Open-Meteo.
+ * Etappen-Statistik je Etappe. Basis-Etappen (ohne Ersatz-Roadbook) liefern die in
+ * scripts/gen-stages.mjs aus dem VOLLEN Track vorberechneten Werte (src/data/
+ * stages.generated.ts) – exakt, ohne die grossen GPX zur Laufzeit zu messen und ohne
+ * Downsampling-Verlust. Hat eine Etappe ein Ersatz-Roadbook (actual.planTrackUrl),
+ * wird DESSEN hochgeladenes GPX zur Laufzeit analysiert (km/Kurven/Paesse aus den
+ * Punkten, fehlende Hoehen via Open-Meteo). So bleiben Basis-Zahlen exakt UND die
+ * Ersatzroute misst sich frisch.
  */
-export function useStageStats(base: string, actuals: Actual[] = []): Record<string, StageStats> {
-  const [stats, setStats] = useState<Record<string, StageStats>>({})
+export function useStageStats(_base: string, actuals: Actual[] = []): Record<string, StageStats> {
+  const [stats, setStats] = useState<Record<string, StageStats>>(generatedStats)
   // Stabiler Schluessel: eine Zeichenkette je Etappen-Ersatz -> Effekt feuert genau bei Aenderung
   const planKey = trip.stages.map((s) => actuals.find((a) => a.stageId === s.id)?.planTrackUrl ?? '').join('|')
   useEffect(() => {
@@ -267,8 +271,9 @@ export function useStageStats(base: string, actuals: Actual[] = []): Record<stri
     const planUrls = planKey.split('|')
     Promise.all(trip.stages.map(async (s, i) => {
       try {
-        const url = planUrls[i] || (s.gpxUrl ? `${base}${s.gpxUrl}` : '')
-        if (!url) throw new Error('kein GPX')
+        // Ohne Ersatzroute: vorberechnete Stats aus dem vollen Track.
+        const url = planUrls[i]
+        if (!url) return [s.id, generatedStats[s.id]] as const
         const { profile, hasEle } = profileFrom(await gpxText(url))
         if (profile.length < 2) throw new Error('keine Trackpunkte')
         // km/Kurven/Paesse aus der vollen Punktdichte (Serpentinen nicht abkuerzen)
@@ -288,7 +293,8 @@ export function useStageStats(base: string, actuals: Actual[] = []): Record<stri
       }
     })).then((entries) => { if (on) setStats(Object.fromEntries(entries)) })
     return () => { on = false }
-  }, [base, planKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planKey])
   return stats
 }
 

@@ -1,4 +1,5 @@
 import type { LatLng } from '../types'
+import { trackKm, totalAscent } from './measure'
 
 
 /**
@@ -38,21 +39,9 @@ export function parseGpx(text: string): LatLng[] {
   return out
 }
 
-/** Haversine-Distanz in km zwischen aufeinanderfolgenden Punkten, summiert. */
+/** Haversine-Distanz in km ueber den vollen Track (zentral in lib/measure, gleich fuer Soll+Ist). */
 export function trackDistanceKm(track: LatLng[]): number {
-  let d = 0
-  for (let i = 1; i < track.length; i++) {
-    const [la1, lo1] = track[i - 1]
-    const [la2, lo2] = track[i]
-    const R = 6371
-    const dLat = ((la2 - la1) * Math.PI) / 180
-    const dLon = ((lo2 - lo1) * Math.PI) / 180
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((la1 * Math.PI) / 180) * Math.cos((la2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
-    d += R * 2 * Math.asin(Math.sqrt(a))
-  }
-  return d
+  return trackKm(track)
 }
 
 export async function fetchGpxTrack(url: string): Promise<LatLng[]> {
@@ -78,21 +67,17 @@ export function parseGpxDetailed(text: string): GpxDetail {
   if (doc.querySelector('parsererror')) return { track: [], ascent: 0, km: 0 }
   const pts = pointEls(doc)
   const track: LatLng[] = []
-  let ascent = 0
-  let prevEle: number | null = null
+  const eles: number[] = []
   pts.forEach((p) => {
     const lat = parseFloat(p.getAttribute('lat') ?? '')
     const lng = parseFloat(p.getAttribute('lon') ?? '')
     if (Number.isNaN(lat) || Number.isNaN(lng)) return
     track.push([lat, lng])
     const ele = eleOf(p)
-    if (!Number.isNaN(ele)) {
-      if (prevEle !== null && ele > prevEle) ascent += ele - prevEle
-      prevEle = ele
-    }
+    if (!Number.isNaN(ele)) eles.push(ele)
   })
   const name = doc.querySelector('metadata > name, trk > name, rte > name')?.textContent?.trim() || undefined
-  return { track, ascent: Math.round(ascent), km: Math.round(trackDistanceKm(track)), name }
+  return { track, ascent: Math.round(totalAscent(eles)), km: Math.round(trackDistanceKm(track)), name }
 }
 
 export interface ProfilePt { lat: number; lng: number; ele: number }

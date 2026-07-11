@@ -13,6 +13,10 @@ handoff/
 
 # Liefer-/Importordner fuer Roh-GPX. Kanonisch sind public/roadbooks/tN.gpx.
 gpx_routes/
+_gpx_files_def/
+
+# Build-Cache der Messpipeline (Open-Meteo-Hoehen). Ergebnis steckt in stages.generated.ts.
+scripts/.cache/
 
 # Push-Sende-Dienst: lokale Abhaengigkeiten nicht committen
 sender/node_modules
