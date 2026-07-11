@@ -7,6 +7,7 @@ interface Props {
   statusLabel: string // z. B. "heute", "Start 04.07.", "fertig"
   gefahrenKm: number
   totalKm: number
+  full?: boolean // Tour abgeschlossen -> Balken voll, unabhaengig von gefahrenKm
 }
 
 const P0: [number, number] = [12, 50]
@@ -22,9 +23,9 @@ function point(t: number): [number, number] {
 }
 
 /** Trip-Arc: Fortschrittsbogen mit einem Punkt je Etappe, „heute" markiert. */
-export function TripArc({ ridden, todayIndex, dayLabel, statusLabel, gefahrenKm, totalKm }: Props) {
+export function TripArc({ ridden, todayIndex, dayLabel, statusLabel, gefahrenKm, totalKm, full }: Props) {
   const n = ridden.length
-  const f = totalKm > 0 ? Math.min(1, gefahrenKm / totalKm) : 0
+  const f = full ? 1 : totalKm > 0 ? Math.min(1, gefahrenKm / totalKm) : 0
   const arcPath = `M${P0[0]},${P0[1]} Q${P1[0]},${P1[1]} ${P2[0]},${P2[1]}`
 
   return (

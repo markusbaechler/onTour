@@ -50,10 +50,14 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const dayIdx = Math.floor((today.getTime() - stageStart(trip.startDate, 0).getTime()) / 86_400_000)
   const before = dayIdx < 0, after = dayIdx >= n
-  const todayIndex = before || after ? -1 : dayIdx
+  // Tour abgeschlossen: alle Etappen gefahren ODER heute nach dem Enddatum (Gegenstueck
+  // zum "future stage"-Guard vor dem Start).
+  const allRidden = n > 0 && riddenFlags.every(Boolean)
+  const completed = allRidden || after
+  const todayIndex = before || completed ? -1 : dayIdx
   const currentDay = before ? 0 : after ? n : dayIdx + 1
-  const dayLabel = `Tag ${currentDay}/${n}`
-  const statusLabel = before ? `Start in ${-dayIdx} ${-dayIdx === 1 ? 'Tag' : 'Tagen'}` : after ? 'Tour beendet' : 'heute'
+  const dayLabel = completed ? `${n} von ${n} Etappen` : `Tag ${currentDay}/${n}`
+  const statusLabel = completed ? 'abgeschlossen' : before ? `Start in ${-dayIdx} ${-dayIdx === 1 ? 'Tag' : 'Tagen'}` : 'heute'
 
   const nextIndex = riddenFlags.findIndex((r) => !r)
   const nextStage = nextIndex >= 0 ? trip.stages[nextIndex] : null
@@ -88,7 +92,7 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
 
       {/* Trip-Arc */}
       <div style={{ marginBottom: 12 }}>
-        <TripArc ridden={riddenFlags} todayIndex={todayIndex} dayLabel={dayLabel} statusLabel={statusLabel} gefahrenKm={gefahrenKm} totalKm={totals.km_} />
+        <TripArc ridden={riddenFlags} todayIndex={todayIndex} dayLabel={dayLabel} statusLabel={statusLabel} gefahrenKm={gefahrenKm} totalKm={totals.km_} full={completed} />
       </div>
 
       {/* Kennzahlen */}
@@ -98,20 +102,38 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
         <div className="stat"><div className="num">{totals.cols}</div><div className="lbl">Pässe</div></div>
       </div>
 
-      {/* Live-Status */}
-      <button className="row" onClick={onGoLive} style={{ marginBottom: 12 }}>
-        <IcBroadcast size={20} />
-        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Live · Zuletzt gesehen</div>
-          <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>
-            {latest ? `${latest.rider} · ${isFresh(latest) ? 'gerade' : `zuletzt ${clock(latest.at)}`}` : 'Noch teilt niemand seinen Standort'}
+      {/* Live-Status. Abgeschlossen: kein "live"-Badge / kein "gerade", nur letzter
+          echter Zeitstempel – und wenn niemand je geteilt hat, ganz ausblenden. */}
+      {(!completed || latest) && (
+        <button className="row" onClick={onGoLive} style={{ marginBottom: 12 }}>
+          <IcBroadcast size={20} />
+          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{completed ? 'Zuletzt gesehen' : 'Live · Zuletzt gesehen'}</div>
+            <div className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>
+              {completed
+                ? (latest ? `${latest.rider} · ${new Date(latest.at).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' })} ${clock(latest.at)}` : '')
+                : (latest ? `${latest.rider} · ${isFresh(latest) ? 'gerade' : `zuletzt ${clock(latest.at)}`}` : 'Noch teilt niemand seinen Standort')}
+            </div>
+          </div>
+          {!completed && latest && isFresh(latest) && <span className="pill ok">live</span>}
+        </button>
+      )}
+
+      {/* Abgeschlossen: Rueckblick statt "Naechste Etappe" (kein Verweis auf T1). */}
+      {completed ? (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+            <span className="eyebrow">Rückblick</span>
+            <span className="mono muted" style={{ fontSize: 11 }}>{n} Etappen</span>
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>Tour abgeschlossen 🏁</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="stat"><div className="num" style={{ color: 'var(--signal)' }}>{fmt(totals.km_)}</div><div className="lbl">Kilometer</div></div>
+            <div className="stat"><div className="num" style={{ color: 'var(--glacier)' }}>{fmt(totals.hm_)}</div><div className="lbl">Höhenmeter</div></div>
+            <div className="stat"><div className="num">{totals.cols}</div><div className="lbl">Pässe</div></div>
           </div>
         </div>
-        {latest && isFresh(latest) && <span className="pill ok">live</span>}
-      </button>
-
-      {/* Naechste Etappe */}
-      {nextStage && (
+      ) : nextStage ? (
         <button className="card" onClick={() => onOpenStage(nextStage.id)} style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
             <span className="eyebrow">Nächste Etappe</span>
@@ -123,7 +145,7 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
           </div>
           <Sparkline profile={nextStats?.profile ?? []} />
         </button>
-      )}
+      ) : null}
 
       {/* Karte */}
       <div style={{ marginBottom: 18 }}>
