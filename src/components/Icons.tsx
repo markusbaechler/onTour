@@ -24,3 +24,8 @@ export const IcMoodPlus = (p: P) => (<S {...p}><path d="M20.9 11A9 9 0 1 0 13 20
 export const IcPin = (p: P) => (<S {...p}><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></S>)
 export const IcExternal = (p: P) => (<S {...p}><path d="M14 4h6v6" /><path d="M20 4 11 13" /><path d="M18 13.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5.5" /></S>)
 export const IcBroadcast = (p: P) => (<S {...p}><circle cx="12" cy="12" r="2" /><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2" /></S>)
+export const IcExpand = (p: P) => (<S {...p}><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" /></S>)
+export const IcFilm = (p: P) => (<S {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4" /></S>)
+export const IcBook = (p: P) => (<S {...p}><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z" /><path d="M19 17H6a2 2 0 0 0-2 2" /></S>)
+export const IcPlay = (p: P) => (<S {...p}><path d="M8 5.5v13l11-6.5-11-6.5Z" /></S>)
+export const IcChevronRight = (p: P) => (<S {...p}><path d="m9 6 6 6-6 6" /></S>)

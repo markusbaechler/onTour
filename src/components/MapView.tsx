@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { DarkReliefTiles } from './MapTiles'
 import { MapGestures } from './MapGestures'
+import { IcExpand } from './Icons'
 import type { LatLng, Stage } from '../types'
 
 const startIcon = L.divIcon({
@@ -76,9 +77,12 @@ interface Props {
   /** hervorgehobener Pass (leuchtet + Karte pant dorthin) */
   highlight?: LatLng | null
   height?: number
+  /** Vorschau-Modus: Karte nicht interaktiv, Tap oeffnet die Vollbild-Karte. */
+  onExpand?: () => void
 }
 
-export function MapView({ stages, tracks, passes, highlight, height = 260 }: Props) {
+export function MapView({ stages, tracks, passes, highlight, height = 260, onExpand }: Props) {
+  const preview = !!onExpand
   const lines = useMemo(
     () => stages.map((s) => ({ id: s.id, pts: tracks?.[s.id]?.length ? tracks[s.id] : s.track ?? [s.start, s.end] })),
     [stages, tracks],
@@ -89,10 +93,10 @@ export function MapView({ stages, tracks, passes, highlight, height = 260 }: Pro
   const last = stages[stages.length - 1]
 
   return (
-    <div style={{ height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)' }}>
-      <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} attributionControl={false}>
+    <div style={{ position: 'relative', height, borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--slate)', cursor: preview ? 'pointer' : undefined }} onClick={onExpand}>
+      <MapContainer center={center} zoom={9} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} dragging={!preview} touchZoom={!preview} doubleClickZoom={!preview} keyboard={!preview} attributionControl={false}>
         <AttributionControl prefix={false} position="bottomright" />
-        <MapGestures />
+        {!preview && <MapGestures />}
         <DarkReliefTiles />
         {/* dezenter Glow unter der Route */}
         {lines.map((l) => (
@@ -114,6 +118,18 @@ export function MapView({ stages, tracks, passes, highlight, height = 260 }: Pro
         <FitBounds points={allPoints} sig={fitSig} />
         <FlyController pos={highlight} points={allPoints} />
       </MapContainer>
+      {preview && (
+        <button onClick={(e) => { e.stopPropagation(); onExpand?.() }} style={expandBtn} aria-label="Karte vergrössern">
+          <IcExpand size={14} /> Vergrössern
+        </button>
+      )}
     </div>
   )
+}
+
+const expandBtn: React.CSSProperties = {
+  position: 'absolute', right: 8, bottom: 8, zIndex: 500,
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  background: 'rgba(14,13,17,.82)', border: '0.5px solid var(--slate)', borderRadius: 999,
+  color: 'var(--snow)', padding: '6px 11px', fontSize: 12, cursor: 'pointer', backdropFilter: 'blur(6px)',
 }

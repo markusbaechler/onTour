@@ -5,8 +5,9 @@ import type { Comment, Photo, Reaction } from '../types'
 import { Avatar } from './Avatar'
 import { BlurImage } from './BlurImage'
 import { IdentityPicker } from './IdentityPicker'
-import { IcMoodPlus, IcSend, IcSmile, IcX } from './Icons'
+import { IcDownload, IcMoodPlus, IcSend, IcSmile, IcX } from './Icons'
 import { dataApiReady } from '../lib/dataApi'
+import { downloadPhoto } from '../lib/download'
 import { toast } from '../lib/toast'
 
 const REACTIONS = ['❤️', '🔥', '😮', '😍', '👏', '😂', '🙏', '💪']
@@ -129,6 +130,13 @@ export function PhotoLightbox({
             <div className="mono" style={{ fontSize: 11, color: 'var(--mist)' }}>{meta}</div>
           </div>
           <span className="mono muted" style={{ fontSize: 11 }}>{safeIndex + 1}/{photos.length}</span>
+          <button
+            onClick={async () => { try { await downloadPhoto(photo); toast.success('Foto geladen') } catch { toast.error('Download fehlgeschlagen') } }}
+            className="pill plan"
+            style={{ background: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          >
+            <IcDownload size={14} /> Laden
+          </button>
           <button onClick={() => onRemove(photo.id)} className="pill plan" style={{ background: 'none', cursor: 'pointer' }}>Löschen</button>
         </div>
 

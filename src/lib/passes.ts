@@ -21,6 +21,22 @@ export interface Pass {
   distFromStart: number
   name: string
 }
+/** Pass mit Etappen-Kontext (fuer die Paesse-View / das Karten-Modal). */
+export interface StagePass extends Pass {
+  stageId: string
+  day: number
+}
+
+/** Alle Paesse ueber alle Etappen, chronologisch (Etappentag, dann Distanz ab Start). */
+export function collectPasses(stats: Record<string, StageStats>): StagePass[] {
+  const out: StagePass[] = []
+  for (const s of trip.stages) {
+    const st = stats[s.id]
+    if (!st) continue
+    for (const p of st.passes) out.push({ ...p, stageId: s.id, day: s.day })
+  }
+  return out.sort((a, b) => a.day - b.day || a.distFromStart - b.distFromStart)
+}
 /** Downgesampletes Hoehenprofil fuer Sparklines/Charts: d = Meter ab Start, e = Hoehe. */
 export interface ProfilePoint { d: number; e: number }
 export interface StageStats {

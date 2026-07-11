@@ -1,10 +1,11 @@
-import { IcDashboard, IcMap, IcCamera, IcBroadcast } from './Icons'
+import { IcDashboard, IcMap, IcMountain, IcCamera, IcBroadcast } from './Icons'
 
-export type Tab = 'overview' | 'stages' | 'photos' | 'live'
+export type Tab = 'overview' | 'stages' | 'passes' | 'photos' | 'live'
 
 const items: { id: Tab; label: string; Icon: (p: { size?: number }) => JSX.Element }[] = [
   { id: 'overview', label: 'Übersicht', Icon: IcDashboard },
   { id: 'stages', label: 'Etappen', Icon: IcMap },
+  { id: 'passes', label: 'Pässe', Icon: IcMountain },
   { id: 'photos', label: 'Fotobuch', Icon: IcCamera },
   { id: 'live', label: 'Live', Icon: IcBroadcast },
 ]

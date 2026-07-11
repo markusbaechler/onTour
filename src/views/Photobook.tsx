@@ -5,15 +5,20 @@ import { PhotoLightbox } from '../components/PhotoLightbox'
 import { StoryCircles, type StoryGroup } from '../components/StoryCircles'
 import { PhotoTimelineMap } from '../components/PhotoTimelineMap'
 import { BlurImage } from '../components/BlurImage'
-import { IcCamera } from '../components/Icons'
+import { PhotobookBuilder } from '../components/PhotobookBuilder'
+import { VideoBuilder } from '../components/VideoBuilder'
+import { IcCamera, IcBook, IcFilm } from '../components/Icons'
 import { cloudinaryReady } from '../lib/cloudinary'
 import { stageDate } from '../lib/format'
+import type { StageStats } from '../lib/passes'
 import type { Comment, Photo, Reaction } from '../types'
 
 interface Props {
   photos: Photo[]
   comments: Comment[]
   reactions: Reaction[]
+  stats: Record<string, StageStats>
+  base: string
   viewerName: string
   loading: boolean
   error: boolean
@@ -36,12 +41,14 @@ function tileClass(i: number): string {
 }
 
 export function Photobook({
-  photos, comments, reactions, viewerName, loading, error, onRetry,
+  photos, comments, reactions, stats, base, viewerName, loading, error, onRetry,
   onAdd, onAddLocal, onRemove, onAddComment, onToggleReaction, onChangeName,
 }: Props) {
   const [storyStart, setStoryStart] = useState<string | null>(null)
   const [mode, setMode] = useState<'mosaic' | 'map'>('mosaic')
   const [uploadStage, setUploadStage] = useState<string | null>(null)
+  const [showBook, setShowBook] = useState(false)
+  const [showVideo, setShowVideo] = useState(false)
 
   // Etappen mit ihren Fotos (chronologisch); Lese-/Story-Reihenfolge = Etappen -> Zeit.
   const byStage = useMemo(
@@ -76,6 +83,13 @@ export function Photobook({
         <span>{loading ? 'lädt…' : `${total} ${total === 1 ? 'Bild' : 'Bilder'} · alle ${trip.riders.length} laden hoch`}</span>
         {!cloudinaryReady && <span className="pill plan" style={{ fontSize: 9, padding: '1px 6px' }}>Demo</span>}
       </p>
+
+      {!loading && !error && total > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowBook(true)}><IcBook size={17} /> Fotobuch erstellen</button>
+          <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowVideo(true)}><IcFilm size={17} /> Video erstellen</button>
+        </div>
+      )}
 
       {loading ? (
         <SkeletonMosaic />
@@ -158,6 +172,9 @@ export function Photobook({
           onChangeName={onChangeName}
         />
       )}
+
+      {showBook && <PhotobookBuilder photos={photos} stats={stats} base={base} onClose={() => setShowBook(false)} />}
+      {showVideo && <VideoBuilder photos={photos} onClose={() => setShowVideo(false)} />}
     </div>
   )
 }

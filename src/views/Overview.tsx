@@ -9,7 +9,8 @@ import { Sparkline } from '../components/Sparkline'
 import { IcCheck, IcCircle, IcBroadcast } from '../components/Icons'
 import { fmt, km, hm, dateRange, clock, stageStart } from '../lib/format'
 import { actualFor, isFresh } from '../lib/store'
-import { useChainedPlaces, usePlanTracks, type StageStats } from '../lib/passes'
+import { collectPasses, useChainedPlaces, usePlanTracks, type StageStats } from '../lib/passes'
+import { MapModal } from '../components/MapModal'
 import type { Actual, RiderLocation } from '../types'
 
 interface Props {
@@ -24,9 +25,11 @@ interface Props {
 
 export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerName, onChangeName }: Props) {
   const [switching, setSwitching] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
   const planTracks = usePlanTracks(actuals)
   const planPlaces = useChainedPlaces(actuals, planTracks)
   const ready = trip.stages.every((s) => stats[s.id])
+  const mapStages = trip.stages.map((s) => { const pt = planTracks[s.id]; return pt?.length ? { ...s, track: pt, start: pt[0], end: pt[pt.length - 1] } : s })
 
   const totals = useMemo(() => {
     if (ready) return {
@@ -149,7 +152,7 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
 
       {/* Karte */}
       <div style={{ marginBottom: 18 }}>
-        <MapView stages={trip.stages.map((s) => { const pt = planTracks[s.id]; return pt?.length ? { ...s, track: pt, start: pt[0], end: pt[pt.length - 1] } : s })} height={240} />
+        <MapView stages={mapStages} height={240} onExpand={() => setMapOpen(true)} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -176,6 +179,10 @@ export function Overview({ actuals, stats, live, onOpenStage, onGoLive, viewerNa
           )
         })}
       </div>
+
+      {mapOpen && (
+        <MapModal title={trip.title} stages={mapStages} passes={collectPasses(stats)} onClose={() => setMapOpen(false)} />
+      )}
     </div>
   )
 }

@@ -6,12 +6,13 @@ import { MapView } from '../components/MapView'
 import { RiddenToggle } from '../components/RiddenToggle'
 import { GpxManager } from '../components/GpxManager'
 import { ProfileModal } from '../components/ProfileModal'
+import { MapModal } from '../components/MapModal'
 import { IcRoute, IcMap, IcDownload, IcMountain } from '../components/Icons'
 import { Navigation } from './Navigation'
 import { fmt, km, hm, stageDate, stageUnlocked } from '../lib/format'
 import { loadGpxDetailed } from '../lib/gpx'
 import { actualFor } from '../lib/store'
-import { useChainedPlaces, usePlanTracks, type StageStats } from '../lib/passes'
+import { useChainedPlaces, usePlanTracks, type StageStats, type StagePass } from '../lib/passes'
 import type { Actual, LatLng, Stage } from '../types'
 
 /** Laedt gefahrene Tracks (Actual.trackUrl) fuer die Kartenlinie; reagiert auf Aenderungen. */
@@ -42,6 +43,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
   const [navStage, setNavStage] = useState<Stage | null>(null)
   const [gpxStage, setGpxStage] = useState<Stage | null>(null)
   const [profileStage, setProfileStage] = useState<Stage | null>(null)
+  const [mapModal, setMapModal] = useState<{ title: string; stage: Stage; passes: StagePass[] } | null>(null)
   const [highlight, setHighlight] = useState<LatLng | null>(null)
   const tracks = useRiddenTracks(actuals)
   const planTracks = usePlanTracks(actuals)
@@ -106,7 +108,7 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
                     </div>
 
                     {/* Karte */}
-                    <MapView stages={[eff]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} highlight={highlight} height={190} />
+                    <MapView stages={[eff]} tracks={tracks} passes={passes.map((p) => [p.lat, p.lng] as LatLng)} highlight={highlight} height={190} onExpand={() => setMapModal({ title: `${eff.from} → ${eff.to}`, stage: eff, passes: passes.map((p) => ({ ...p, stageId: s.id, day: s.day })) })} />
 
                     {/* Kennzahlenzeile */}
                     <div style={{ display: 'flex', gap: 6, margin: '12px 0' }}>
@@ -178,6 +180,9 @@ export function Stages({ actuals, stats, openStage, onUpsert, base }: Props) {
       )}
       {profileStage && (
         <ProfileModal stage={profileStage} stats={stats[profileStage.id]} onClose={() => setProfileStage(null)} />
+      )}
+      {mapModal && (
+        <MapModal title={mapModal.title} stages={[mapModal.stage]} passes={mapModal.passes} onClose={() => setMapModal(null)} />
       )}
     </div>
   )

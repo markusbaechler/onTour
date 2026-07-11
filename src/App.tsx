@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Nav, type Tab } from './components/Nav'
 import { Overview } from './views/Overview'
 import { Stages } from './views/Stages'
+import { Passes } from './views/Passes'
 import { Photobook } from './views/Photobook'
 import { Live } from './views/Live'
 import { IdentityPicker } from './components/IdentityPicker'
@@ -57,11 +58,14 @@ export default function App() {
       <OfflineBanner />
       {tab === 'overview' && <Overview actuals={store.actuals} stats={stageStats} live={store.live} onOpenStage={openStageInStages} onGoLive={() => setTab('live')} viewerName={viewer.name} onChangeName={viewer.setName} />}
       {tab === 'stages' && <Stages actuals={store.actuals} stats={stageStats} openStage={openStage} onUpsert={store.upsertActual} base={base} />}
+      {tab === 'passes' && <Passes actuals={store.actuals} stats={stageStats} />}
       {tab === 'photos' && (
         <Photobook
           photos={store.photos}
           comments={store.comments}
           reactions={store.reactions}
+          stats={stageStats}
+          base={base}
           viewerName={viewer.name}
           loading={store.loading}
           error={store.error}
