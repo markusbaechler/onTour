@@ -73,6 +73,7 @@ export default function App() {
           onAdd={store.addPhoto}
           onAddLocal={store.addPhotoLocal}
           onRemove={store.removePhoto}
+          onUpdatePhotoStage={store.updatePhotoStage}
           onAddComment={store.addComment}
           onToggleReaction={store.toggleReaction}
           onChangeName={viewer.setName}

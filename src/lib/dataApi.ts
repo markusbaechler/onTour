@@ -25,6 +25,7 @@ export type Op =
   | { op: 'upsertActual'; actual: Actual }
   | { op: 'addPhoto'; photo: Photo }
   | { op: 'removePhoto'; id: string }
+  | { op: 'updatePhotoStage'; id: string; stageId: string }
   | { op: 'addComment'; comment: Comment }
   | { op: 'removeComment'; id: string }
   | { op: 'addReaction'; reaction: Reaction }
@@ -75,6 +76,7 @@ export async function sendOp(op: Op): Promise<void> {
     }
     case 'addPhoto': d.photos.unshift(op.photo); break
     case 'removePhoto': d.photos = d.photos.filter((p) => p.id !== op.id); break
+    case 'updatePhotoStage': d.photos = d.photos.map((p) => (p.id === op.id ? { ...p, stageId: op.stageId } : p)); break
     case 'addComment': d.comments.push(op.comment); break
     case 'removeComment': d.comments = d.comments.filter((c) => c.id !== op.id); break
     case 'addReaction':

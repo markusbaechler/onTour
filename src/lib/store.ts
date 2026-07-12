@@ -145,6 +145,11 @@ export function useStore() {
     apply({ ...d, photos: d.photos.filter((p) => p.id !== id) }, { op: 'removePhoto', id })
   }, [apply])
 
+  const updatePhotoStage = useCallback((id: string, stageId: string) => {
+    const d = dataRef.current
+    apply({ ...d, photos: d.photos.map((p) => (p.id === id ? { ...p, stageId } : p)) }, { op: 'updatePhotoStage', id, stageId })
+  }, [apply])
+
   const addComment = useCallback((c: Comment) => {
     apply({ ...dataRef.current, comments: [...dataRef.current.comments, c] }, { op: 'addComment', comment: c })
   }, [apply])
@@ -165,5 +170,5 @@ export function useStore() {
     dispatch({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
   }, [])
 
-  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, addComment, toggleReaction, setLocation }
+  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, updatePhotoStage, addComment, toggleReaction, setLocation }
 }

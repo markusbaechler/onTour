@@ -8,7 +8,8 @@ import { BlurImage } from '../components/BlurImage'
 import { PhotobookBuilder } from '../components/PhotobookBuilder'
 import { VideoStudio } from '../components/video/VideoStudio'
 import { Slideshow } from '../components/Slideshow'
-import { IcCamera, IcBook, IcFilm, IcPlay } from '../components/Icons'
+import { AssignReview } from '../components/AssignReview'
+import { IcCamera, IcBook, IcFilm, IcPlay, IcPin } from '../components/Icons'
 import { cloudinaryReady } from '../lib/cloudinary'
 import { stageDate } from '../lib/format'
 import type { StageStats } from '../lib/passes'
@@ -27,6 +28,7 @@ interface Props {
   onAdd: (p: Photo) => void
   onAddLocal: (p: Photo) => void
   onRemove: (id: string) => void
+  onUpdatePhotoStage: (id: string, stageId: string) => void
   onAddComment: (c: Comment) => void
   onToggleReaction: (photoId: string, author: string, emoji: string) => void
   onChangeName: (name: string) => void
@@ -43,7 +45,7 @@ function tileClass(i: number): string {
 
 export function Photobook({
   photos, comments, reactions, stats, base, viewerName, loading, error, onRetry,
-  onAdd, onAddLocal, onRemove, onAddComment, onToggleReaction, onChangeName,
+  onAdd, onAddLocal, onRemove, onUpdatePhotoStage, onAddComment, onToggleReaction, onChangeName,
 }: Props) {
   const [storyStart, setStoryStart] = useState<string | null>(null)
   const [mode, setMode] = useState<'mosaic' | 'map'>('mosaic')
@@ -51,6 +53,7 @@ export function Photobook({
   const [showBook, setShowBook] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
   const [slideshow, setSlideshow] = useState<{ photos: Photo[]; title?: string } | null>(null)
+  const [showAssign, setShowAssign] = useState(false)
 
   // Etappen mit ihren Fotos (chronologisch); Lese-/Story-Reihenfolge = Etappen -> Zeit.
   const byStage = useMemo(
@@ -89,10 +92,11 @@ export function Photobook({
       {!loading && !error && total > 0 && (
         <>
           <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setSlideshow({ photos })}><IcPlay size={18} /> Diashow</button>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowBook(true)}><IcBook size={17} /> Fotobuch erstellen</button>
             <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowVideo(true)}><IcFilm size={17} /> Video erstellen</button>
           </div>
+          <button className="btn ghost" style={{ width: '100%', fontSize: 13, marginBottom: 16 }} onClick={() => setShowAssign(true)}><IcPin size={16} /> Zuordnung prüfen</button>
         </>
       )}
 
@@ -182,6 +186,7 @@ export function Photobook({
       {showBook && <PhotobookBuilder photos={photos} stats={stats} base={base} onClose={() => setShowBook(false)} />}
       {showVideo && <VideoStudio photos={photos} comments={comments} reactions={reactions} stats={stats} base={base} onClose={() => setShowVideo(false)} />}
       {slideshow && <Slideshow photos={slideshow.photos} title={slideshow.title} onClose={() => setSlideshow(null)} />}
+      {showAssign && <AssignReview photos={photos} stats={stats} onUpdatePhotoStage={onUpdatePhotoStage} onClose={() => setShowAssign(false)} />}
     </div>
   )
 }
