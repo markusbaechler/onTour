@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { trip } from '../../data/trip'
 import { scorePhotos, type ScoreEntry } from '../../lib/photoScore'
-import { autoCaption, defaultSelection, generateStoryboard, rankStages } from '../../lib/storyboard'
+import { autoCaption, defaultSelection, generateStoryboard } from '../../lib/storyboard'
+import { sortPhotos } from '../../lib/photoOrder'
 import { fetchTrack, decodeBlob, uploadedMusic, type MusicSource } from '../../lib/audio'
 import { TRACKS, DEFAULT_TRACK } from '../../lib/music'
 import { detectBeats } from '../../lib/beats'
@@ -77,11 +78,11 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   // Auswahl (edit) aufbauen, sobald Scores da sind oder der Umfang wechselt
   useEffect(() => {
     if (!scores) return
-    const ranked = rankStages(photos, scores)
-    const def = defaultSelection(photos, scores, 3)
+    const def = defaultSelection(photos, scores, 3) // Auswahl (welche) weiterhin nach Qualitaet
     const next: Record<string, EditItem[]> = {}
     for (const s of scopeStages) {
-      const list = ranked[s.id] ?? []
+      // Reihenfolge = kanonisch chronologisch (takenAt), NICHT nach Score -> Video laeuft in Aufnahme-Reihenfolge
+      const list = sortPhotos(photos.filter((p) => p.stageId === s.id))
       next[s.id] = list.map((p) => ({ id: p.id, caption: autoCaption(p), on: def[s.id]?.includes(p.id) ?? false }))
     }
     setEdit(next)
@@ -103,9 +104,6 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
     setStep((s) => Math.min(5, s + 1))
   }
   function toggle(sid: string, id: string) { setEdit((e) => ({ ...e, [sid]: e[sid].map((i) => (i.id === id ? { ...i, on: !i.on } : i)) })) }
-  function move(sid: string, idx: number, dir: -1 | 1) {
-    setEdit((e) => { const arr = [...e[sid]]; const j = idx + dir; if (j < 0 || j >= arr.length) return e; [arr[idx], arr[j]] = [arr[j], arr[idx]]; return { ...e, [sid]: arr } })
-  }
   function setCaption(sid: string, id: string, caption: string) { setEdit((e) => ({ ...e, [sid]: e[sid].map((i) => (i.id === id ? { ...i, caption } : i)) })) }
 
   async function doRender(budget: 'normal' | 'low' = 'normal') {
@@ -194,7 +192,7 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
               <Progress label="Analysiere Fotos" value={analyzeProg} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <p className="muted" style={{ fontSize: 12 }}>Bestes zuerst. Antippen wählt aus/ab, ▲▼ ordnet, Caption ist editierbar.</p>
+                <p className="muted" style={{ fontSize: 12 }}>In Aufnahme-Reihenfolge. Antippen wählt aus/ab (Vorauswahl = beste Fotos), Caption ist editierbar.</p>
                 {scopeStages.map((s) => (
                   <section key={s.id}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
@@ -202,7 +200,7 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
                       <span style={{ fontSize: 14, fontWeight: 500 }}>{s.from} → {s.to}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {(edit[s.id] ?? []).map((it, i) => {
+                      {(edit[s.id] ?? []).map((it) => {
                         const p = photoById.get(it.id)
                         const score = Math.round((scores?.get(it.id)?.total ?? 0) * 100)
                         return (
@@ -212,10 +210,6 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
                               <span style={{ position: 'absolute', left: 2, bottom: 2, background: 'rgba(8,7,10,.75)', color: 'var(--signal)', fontSize: 9, fontWeight: 700, padding: '0 3px', borderRadius: 3, fontFamily: 'var(--font-mono)' }}>{score}</span>
                             </button>
                             <input value={it.caption} onChange={(e) => setCaption(s.id, it.id, e.target.value)} placeholder="Caption…" style={{ flex: 1, minWidth: 0, background: 'var(--ink)', color: 'var(--snow)', border: '0.5px solid var(--slate)', borderRadius: 8, padding: '8px 10px', fontFamily: 'inherit', fontSize: 13 }} />
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <button onClick={() => move(s.id, i, -1)} aria-label="hoch" style={arrowBtn}>▲</button>
-                              <button onClick={() => move(s.id, i, 1)} aria-label="runter" style={arrowBtn}>▼</button>
-                            </div>
                           </div>
                         )
                       })}
@@ -307,7 +301,6 @@ function Progress({ label, value }: { label: string; value: number }) {
   )
 }
 
-const arrowBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--mist)', cursor: 'pointer', fontSize: 10, lineHeight: 1.2, padding: '2px 4px' }
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 85, background: 'rgba(8,7,10,.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
 const sheet: React.CSSProperties = { position: 'relative', width: '100%', maxWidth: 'var(--shell)', height: '92vh', display: 'flex', flexDirection: 'column', background: 'var(--ink-raised)', borderTop: '0.5px solid var(--slate)', borderRadius: '20px 20px 0 0', padding: '16px 18px calc(16px + env(safe-area-inset-bottom))' }
 const closeBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--snow)', display: 'flex', cursor: 'pointer', padding: 6 }

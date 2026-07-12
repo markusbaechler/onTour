@@ -134,7 +134,16 @@ function doPost(e) {
         break
       case 'addPhoto': d.photos.unshift(body.photo); break
       case 'removePhoto': d.photos = d.photos.filter(function (p) { return p.id !== body.id }); break
-      case 'updatePhotoStage': d.photos = d.photos.map(function (p) { return p.id === body.id ? Object.assign({}, p, { stageId: body.stageId }) : p }); break
+      case 'updatePhoto':
+        d.photos = d.photos.map(function (p) {
+          if (p.id !== body.id) return p
+          var n = Object.assign({}, p), patch = body.patch || {}
+          if (patch.stageId !== undefined) n.stageId = patch.stageId
+          if (patch.takenAt === null) delete n.takenAt; else if (patch.takenAt !== undefined) n.takenAt = patch.takenAt
+          if (patch.orderKey === null) delete n.orderKey; else if (patch.orderKey !== undefined) n.orderKey = patch.orderKey
+          return n
+        })
+        break
       case 'addComment': d.comments.push(body.comment); break
       case 'removeComment': d.comments = d.comments.filter(function (c) { return c.id !== body.id }); break
       case 'addReaction':

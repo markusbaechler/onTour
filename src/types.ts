@@ -39,9 +39,11 @@ export interface Photo {
   thumbUrl: string
   author: string
   caption?: string
-  createdAt: string // ISO
+  createdAt: string // ISO – UPLOAD-Zeit
   lat?: number
   lng?: number
+  takenAt?: string // ISO – echte Aufnahmezeit aus EXIF (fuer die Sortierung)
+  orderKey?: number // manuell gesetzte Reihenfolge (Sortier-Modus); schlaegt takenAt
 }
 
 export interface Trip {

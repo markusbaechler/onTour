@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Actual, Comment, Photo, Reaction, RiderLocation } from '../types'
-import { dataApiReady, loadData, loadLive, primeLocalData, type DataStore, type LiveStore, type Op } from './dataApi'
+import { applyPhotoPatch, dataApiReady, loadData, loadLive, primeLocalData, type DataStore, type LiveStore, type Op, type PhotoPatch } from './dataApi'
 import { dispatch, onOutboxDrop, useOutbox } from './outbox'
 import { toast } from './toast'
 
@@ -145,9 +145,9 @@ export function useStore() {
     apply({ ...d, photos: d.photos.filter((p) => p.id !== id) }, { op: 'removePhoto', id })
   }, [apply])
 
-  const updatePhotoStage = useCallback((id: string, stageId: string) => {
+  const updatePhoto = useCallback((id: string, patch: PhotoPatch) => {
     const d = dataRef.current
-    apply({ ...d, photos: d.photos.map((p) => (p.id === id ? { ...p, stageId } : p)) }, { op: 'updatePhotoStage', id, stageId })
+    apply({ ...d, photos: d.photos.map((p) => (p.id === id ? applyPhotoPatch(p, patch) : p)) }, { op: 'updatePhoto', id, patch })
   }, [apply])
 
   const addComment = useCallback((c: Comment) => {
@@ -170,5 +170,5 @@ export function useStore() {
     dispatch({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
   }, [])
 
-  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, updatePhotoStage, addComment, toggleReaction, setLocation }
+  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, updatePhoto, addComment, toggleReaction, setLocation }
 }

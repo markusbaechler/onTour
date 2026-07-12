@@ -9,9 +9,12 @@ import { PhotobookBuilder } from '../components/PhotobookBuilder'
 import { VideoStudio } from '../components/video/VideoStudio'
 import { Slideshow } from '../components/Slideshow'
 import { AssignReview } from '../components/AssignReview'
-import { IcCamera, IcBook, IcFilm, IcPlay, IcPin } from '../components/Icons'
+import { SortMode } from '../components/SortMode'
+import { IcCamera, IcBook, IcFilm, IcPlay, IcPin, IcRoute } from '../components/Icons'
 import { cloudinaryReady } from '../lib/cloudinary'
+import { sortPhotos } from '../lib/photoOrder'
 import { stageDate } from '../lib/format'
+import type { PhotoPatch } from '../lib/dataApi'
 import type { StageStats } from '../lib/passes'
 import type { Comment, Photo, Reaction } from '../types'
 
@@ -28,7 +31,7 @@ interface Props {
   onAdd: (p: Photo) => void
   onAddLocal: (p: Photo) => void
   onRemove: (id: string) => void
-  onUpdatePhotoStage: (id: string, stageId: string) => void
+  onUpdatePhoto: (id: string, patch: PhotoPatch) => void
   onAddComment: (c: Comment) => void
   onToggleReaction: (photoId: string, author: string, emoji: string) => void
   onChangeName: (name: string) => void
@@ -45,7 +48,7 @@ function tileClass(i: number): string {
 
 export function Photobook({
   photos, comments, reactions, stats, base, viewerName, loading, error, onRetry,
-  onAdd, onAddLocal, onRemove, onUpdatePhotoStage, onAddComment, onToggleReaction, onChangeName,
+  onAdd, onAddLocal, onRemove, onUpdatePhoto, onAddComment, onToggleReaction, onChangeName,
 }: Props) {
   const [storyStart, setStoryStart] = useState<string | null>(null)
   const [mode, setMode] = useState<'mosaic' | 'map'>('mosaic')
@@ -54,12 +57,13 @@ export function Photobook({
   const [showVideo, setShowVideo] = useState(false)
   const [slideshow, setSlideshow] = useState<{ photos: Photo[]; title?: string } | null>(null)
   const [showAssign, setShowAssign] = useState(false)
+  const [showSort, setShowSort] = useState(false)
 
-  // Etappen mit ihren Fotos (chronologisch); Lese-/Story-Reihenfolge = Etappen -> Zeit.
+  // Etappen mit ihren Fotos in kanonischer Reihenfolge (Tag -> orderKey -> takenAt).
   const byStage = useMemo(
     () => trip.stages.map((s) => ({
       stage: s,
-      photos: photos.filter((p) => p.stageId === s.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      photos: sortPhotos(photos.filter((p) => p.stageId === s.id)),
     })),
     [photos],
   )
@@ -96,7 +100,10 @@ export function Photobook({
             <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowBook(true)}><IcBook size={17} /> Fotobuch erstellen</button>
             <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowVideo(true)}><IcFilm size={17} /> Video erstellen</button>
           </div>
-          <button className="btn ghost" style={{ width: '100%', fontSize: 13, marginBottom: 16 }} onClick={() => setShowAssign(true)}><IcPin size={16} /> Zuordnung prüfen</button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowAssign(true)}><IcPin size={16} /> Zuordnung prüfen</button>
+            <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowSort(true)}><IcRoute size={16} /> Sortieren</button>
+          </div>
         </>
       )}
 
@@ -186,7 +193,8 @@ export function Photobook({
       {showBook && <PhotobookBuilder photos={photos} stats={stats} base={base} onClose={() => setShowBook(false)} />}
       {showVideo && <VideoStudio photos={photos} comments={comments} reactions={reactions} stats={stats} base={base} onClose={() => setShowVideo(false)} />}
       {slideshow && <Slideshow photos={slideshow.photos} title={slideshow.title} onClose={() => setSlideshow(null)} />}
-      {showAssign && <AssignReview photos={photos} stats={stats} onUpdatePhotoStage={onUpdatePhotoStage} onClose={() => setShowAssign(false)} />}
+      {showAssign && <AssignReview photos={photos} stats={stats} onUpdatePhoto={onUpdatePhoto} onClose={() => setShowAssign(false)} />}
+      {showSort && <SortMode photos={photos} onUpdatePhoto={onUpdatePhoto} onClose={() => setShowSort(false)} />}
     </div>
   )
 }

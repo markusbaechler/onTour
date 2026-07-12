@@ -16,6 +16,16 @@ interface Props {
   onClose: () => void
 }
 
+/** EXIF-Aufnahmezeit aus der lokalen Datei lesen (exifr, lazy). Kein EXIF -> undefined. */
+async function readTakenAt(file: File): Promise<string | undefined> {
+  try {
+    const { parse } = await import('exifr')
+    const ex = await parse(file, { exif: true })
+    const d = ex?.DateTimeOriginal
+    return d instanceof Date && !isNaN(d.getTime()) ? d.toISOString() : undefined
+  } catch { return undefined }
+}
+
 /** Zentraler Upload-Flow (Bottom-Sheet): Autor + Etappen-Auswahl, dann Dateien waehlen. */
 export function PhotoUploadSheet({ author, defaultStageId, onAdd, onAddLocal, onClose }: Props) {
   const input = useRef<HTMLInputElement>(null)
@@ -32,14 +42,15 @@ export function PhotoUploadSheet({ author, defaultStageId, onAdd, onAddLocal, on
     for (const file of Array.from(files)) {
       const id = crypto.randomUUID()
       const createdAt = new Date().toISOString()
+      const takenAt = await readTakenAt(file) // EXIF-Aufnahmezeit aus der LOKALEN Datei (Original)
       try {
         const r = await uploadPhoto(file)
-        onAdd({ id, stageId, url: r.url, thumbUrl: r.thumbUrl, author, createdAt, lat: r.lat, lng: r.lng })
+        onAdd({ id, stageId, url: r.url, thumbUrl: r.thumbUrl, author, createdAt, takenAt, lat: r.lat, lng: r.lng })
         added++
       } catch {
         const local = URL.createObjectURL(file)
-        onAddLocal({ id, stageId, url: local, thumbUrl: local, author, createdAt })
-        await queuePhoto(file, { id, stageId, author, createdAt })
+        onAddLocal({ id, stageId, url: local, thumbUrl: local, author, createdAt, takenAt })
+        await queuePhoto(file, { id, stageId, author, createdAt, takenAt })
         buffered++
       }
     }

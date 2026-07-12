@@ -11,6 +11,18 @@ export interface DataStore {
 }
 export type LiveStore = Record<string, RiderLocation>
 
+/** Teil-Update eines Fotos. null = Feld loeschen (z. B. orderKey zuruecksetzen). */
+export interface PhotoPatch { stageId?: string; takenAt?: string | null; orderKey?: number | null }
+
+/** Wendet einen PhotoPatch auf ein Foto an (null loescht das Feld). */
+export function applyPhotoPatch(p: Photo, patch: PhotoPatch): Photo {
+  const n: Photo = { ...p }
+  if (patch.stageId !== undefined) n.stageId = patch.stageId
+  if (patch.takenAt === null) delete n.takenAt; else if (patch.takenAt !== undefined) n.takenAt = patch.takenAt
+  if (patch.orderKey === null) delete n.orderKey; else if (patch.orderKey !== undefined) n.orderKey = patch.orderKey
+  return n
+}
+
 const emptyData: DataStore = { actuals: [], photos: [], comments: [], reactions: [] }
 const LS_DATA = 'alpes-data-v2' // v2: alten Demo-Seed (vorbelegte „gefahren"-Etappen) verwerfen
 const LS_LIVE = 'alpes-live'
@@ -25,7 +37,7 @@ export type Op =
   | { op: 'upsertActual'; actual: Actual }
   | { op: 'addPhoto'; photo: Photo }
   | { op: 'removePhoto'; id: string }
-  | { op: 'updatePhotoStage'; id: string; stageId: string }
+  | { op: 'updatePhoto'; id: string; patch: PhotoPatch }
   | { op: 'addComment'; comment: Comment }
   | { op: 'removeComment'; id: string }
   | { op: 'addReaction'; reaction: Reaction }
@@ -76,7 +88,7 @@ export async function sendOp(op: Op): Promise<void> {
     }
     case 'addPhoto': d.photos.unshift(op.photo); break
     case 'removePhoto': d.photos = d.photos.filter((p) => p.id !== op.id); break
-    case 'updatePhotoStage': d.photos = d.photos.map((p) => (p.id === op.id ? { ...p, stageId: op.stageId } : p)); break
+    case 'updatePhoto': d.photos = d.photos.map((p) => (p.id === op.id ? applyPhotoPatch(p, op.patch) : p)); break
     case 'addComment': d.comments.push(op.comment); break
     case 'removeComment': d.comments = d.comments.filter((c) => c.id !== op.id); break
     case 'addReaction':

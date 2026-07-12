@@ -11,7 +11,7 @@ const OPS_KEY = 'alpes-outbox'
 const DB_NAME = 'alpes-outbox'
 const STORE = 'blobs'
 
-interface PhotoMeta { id: string; stageId: string; author: string; caption?: string; createdAt: string }
+interface PhotoMeta { id: string; stageId: string; author: string; caption?: string; createdAt: string; takenAt?: string }
 export type OutboxItem =
   | { id: string; kind: 'op'; op: Op; attempts: number }
   | { id: string; kind: 'photo'; blobId: string; meta: PhotoMeta; attempts: number }

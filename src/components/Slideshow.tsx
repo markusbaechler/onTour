@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { trip } from '../data/trip'
 import { TRACKS, trackUrl } from '../lib/music'
+import { sortPhotos } from '../lib/photoOrder'
 import { IcX, IcPlay } from './Icons'
 import type { Photo } from '../types'
 
@@ -23,7 +24,7 @@ type Slide =
 export function Slideshow({ photos, title, onClose }: Props) {
   const slides = useMemo<Slide[]>(() => {
     const dayOf = (p: Photo) => trip.stages.find((s) => s.id === p.stageId)?.day
-    const sorted = [...photos].sort((a, b) => (((dayOf(a) ?? 99) - (dayOf(b) ?? 99)) || a.createdAt.localeCompare(b.createdAt)))
+    const sorted = sortPhotos(photos) // kanonische Reihenfolge: Tag -> orderKey -> takenAt
     const out: Slide[] = []
     let t = 0, lastDay: number | undefined | null = null, kbi = 0
     for (const p of sorted) {

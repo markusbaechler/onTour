@@ -7,11 +7,12 @@ import type { LatLng, Photo } from '../types'
 // da verkleinernde Transformationen EXIF strippen koennen.
 
 export type AssignReason = 'gps' | 'date'
-export interface Assignment {
-  photoId: string; currentStageId: string; suggestedStageId: string
-  reason: AssignReason; evidence: string; confidence: AssignReason
+export interface PhotoAnalysis {
+  photoId: string; currentStageId: string
+  takenAt?: string; takenLabel?: string // EXIF-Aufnahmezeit, nur wenn neu/abweichend (Backfill)
+  suggestion?: { stageId: string; reason: AssignReason; evidence: string } // nur wenn Etappe wechselt
 }
-export interface AnalyzeResult { assignments: Assignment[]; unbestimmt: number; analyzed: number }
+export interface AnalyzeResult { results: PhotoAnalysis[]; unbestimmt: number; analyzed: number }
 
 const MAX_GPS_KM = 15
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -67,37 +68,46 @@ export async function analyzeAssignments(
   const { parse } = await import('exifr')
   const stageTracks = trip.stages.map((s) => ({ id: s.id, day: s.day, track: simplify(planTracks[s.id]?.length ? planTracks[s.id] : (s.track ?? [s.start, s.end])) }))
 
-  const assignments: Assignment[] = []
+  const results: PhotoAnalysis[] = []
   let unbestimmt = 0
+  const tick = (i: number) => { if ((i + 1) % 6 === 0 || i === photos.length - 1) { opts.onProgress?.(i + 1, photos.length); return new Promise((r) => setTimeout(r, 0)) } return Promise.resolve() }
+
   for (let i = 0; i < photos.length; i++) {
     const p = photos[i]
     let lat: number | undefined, lng: number | undefined, date: Date | undefined
     try {
       const ex = await parse(p.url, { tiff: true, exif: true, gps: true })
       if (ex) { lat = ex.latitude; lng = ex.longitude; date = ex.DateTimeOriginal instanceof Date ? ex.DateTimeOriginal : undefined }
-    } catch { /* CORS / kein EXIF -> unbestimmt */ }
+    } catch { /* CORS / kein EXIF */ }
     if ((lat == null || lng == null) && p.lat != null && p.lng != null) { lat = p.lat; lng = p.lng }
+    const hasGps = lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)
 
+    if (!hasGps && !date) { unbestimmt++; await tick(i); continue }
+
+    // takenAt-Backfill: nur wenn EXIF-Datum vorhanden UND anders als gespeichert.
+    let takenAt: string | undefined, takenLabel: string | undefined
+    if (date) {
+      const iso = date.toISOString()
+      if (iso !== p.takenAt) { takenAt = iso; takenLabel = `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}. ${pad2(date.getHours())}:${pad2(date.getMinutes())}` }
+    }
+
+    // Vorschlag (GPS schlaegt Datum)
     let gps: { stageId: string; day: number; evidence: string } | null = null
-    if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+    if (hasGps) {
       let best = Infinity, bestStage: { id: string; day: number } | null = null
-      for (const st of stageTracks) { const d = pointToTrackKm(lat, lng, st.track); if (d < best) { best = d; bestStage = st } }
+      for (const st of stageTracks) { const d = pointToTrackKm(lat!, lng!, st.track); if (d < best) { best = d; bestStage = st } }
       if (bestStage && best <= MAX_GPS_KM) gps = { stageId: bestStage.id, day: bestStage.day, evidence: `GPS ${best.toFixed(1)} km an T${bestStage.day}-Route` }
     }
-
     let dt: { stageId: string; day: number; evidence: string } | null = null
     if (date) { const ds = dateStage(date); if (ds) dt = { stageId: ds.stageId, day: ds.day, evidence: `aufgenommen ${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}. = T${ds.day}` } }
+    const chosen = gps ?? dt
+    let suggestion: PhotoAnalysis['suggestion']
+    if (chosen && chosen.stageId !== p.stageId) suggestion = { stageId: chosen.stageId, reason: gps ? 'gps' : 'date', evidence: chosen.evidence }
 
-    if (!gps && !dt) { unbestimmt++ }
-    else {
-      const chosen = gps ?? dt! // GPS schlaegt Datum
-      const reason: AssignReason = gps ? 'gps' : 'date'
-      if (chosen.stageId !== p.stageId) assignments.push({ photoId: p.id, currentStageId: p.stageId, suggestedStageId: chosen.stageId, reason, evidence: chosen.evidence, confidence: reason })
-    }
-
-    if ((i + 1) % 6 === 0 || i === photos.length - 1) { opts.onProgress?.(i + 1, photos.length); await new Promise((r) => setTimeout(r, 0)) }
+    if (takenAt || suggestion) results.push({ photoId: p.id, currentStageId: p.stageId, takenAt, takenLabel, suggestion })
+    await tick(i)
   }
-  return { assignments, unbestimmt, analyzed: photos.length }
+  return { results, unbestimmt, analyzed: photos.length }
 }
 
 /** Etappentag zu stageId (fuer Labels in der Review-UI). */
