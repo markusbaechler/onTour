@@ -7,7 +7,8 @@ import { PhotoTimelineMap } from '../components/PhotoTimelineMap'
 import { BlurImage } from '../components/BlurImage'
 import { PhotobookBuilder } from '../components/PhotobookBuilder'
 import { VideoStudio } from '../components/video/VideoStudio'
-import { IcCamera, IcBook, IcFilm } from '../components/Icons'
+import { Slideshow } from '../components/Slideshow'
+import { IcCamera, IcBook, IcFilm, IcPlay } from '../components/Icons'
 import { cloudinaryReady } from '../lib/cloudinary'
 import { stageDate } from '../lib/format'
 import type { StageStats } from '../lib/passes'
@@ -49,6 +50,7 @@ export function Photobook({
   const [uploadStage, setUploadStage] = useState<string | null>(null)
   const [showBook, setShowBook] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
+  const [slideshow, setSlideshow] = useState<{ photos: Photo[]; title?: string } | null>(null)
 
   // Etappen mit ihren Fotos (chronologisch); Lese-/Story-Reihenfolge = Etappen -> Zeit.
   const byStage = useMemo(
@@ -85,10 +87,13 @@ export function Photobook({
       </p>
 
       {!loading && !error && total > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowBook(true)}><IcBook size={17} /> Fotobuch erstellen</button>
-          <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowVideo(true)}><IcFilm size={17} /> Video erstellen</button>
-        </div>
+        <>
+          <button className="btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => setSlideshow({ photos })}><IcPlay size={18} /> Diashow</button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowBook(true)}><IcBook size={17} /> Fotobuch erstellen</button>
+            <button className="btn ghost" style={{ flex: 1, fontSize: 13 }} onClick={() => setShowVideo(true)}><IcFilm size={17} /> Video erstellen</button>
+          </div>
+        </>
       )}
 
       {loading ? (
@@ -113,6 +118,7 @@ export function Photobook({
                     <span className="mono" style={{ color: 'var(--signal)', fontWeight: 700, fontSize: 13 }}>T{s.day}</span>
                     <span style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.from} → {s.to}</span>
                     <span className="mono muted" style={{ fontSize: 11, marginLeft: 'auto', flexShrink: 0 }}>{stageDate(trip.startDate, s.day - 1)}</span>
+                    {ps.length > 0 && <button onClick={() => setSlideshow({ photos: ps, title: `T${s.day} · ${s.from} → ${s.to}` })} className="pill" aria-label="Diashow dieser Etappe" style={{ cursor: 'pointer', padding: '2px 8px', flexShrink: 0 }}>▶</button>}
                   </div>
 
                   {ps.length === 0 ? (
@@ -175,6 +181,7 @@ export function Photobook({
 
       {showBook && <PhotobookBuilder photos={photos} stats={stats} base={base} onClose={() => setShowBook(false)} />}
       {showVideo && <VideoStudio photos={photos} comments={comments} reactions={reactions} stats={stats} base={base} onClose={() => setShowVideo(false)} />}
+      {slideshow && <Slideshow photos={slideshow.photos} title={slideshow.title} onClose={() => setSlideshow(null)} />}
     </div>
   )
 }
