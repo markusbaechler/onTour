@@ -33,6 +33,8 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   const [aspect, setAspect] = useState<Aspect>('9:16')
   const [music, setMusic] = useState<MusicSource | null>(null)
   const [bpm, setBpm] = useState<number | undefined>()
+  const [musicDur, setMusicDur] = useState<number | undefined>()
+  const [target, setTarget] = useState<number | 'music'>(90) // Ziel-Laenge in s (170 = 2:50) oder Musiklaenge
   const [scores, setScores] = useState<Map<string, ScoreEntry> | null>(null)
   const [analyzeProg, setAnalyzeProg] = useState<number | null>(null)
   const [edit, setEdit] = useState<Record<string, EditItem[]>>({})
@@ -40,6 +42,7 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   const [renderState, setRenderState] = useState<'idle' | 'working' | 'done' | 'error'>('idle')
   const [renderPhase, setRenderPhase] = useState<'frames' | 'render'>('frames')
   const [renderProg, setRenderProg] = useState(0)
+  const [renderDetail, setRenderDetail] = useState('')
   const [result, setResult] = useState<RenderResult | null>(null)
   const [error, setError] = useState('')
   const scoringRef = useRef(false)
@@ -56,7 +59,7 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   async function applyMusic(src: MusicSource) {
     setMusic(src); setBpm(undefined)
     if (!AudioCtor) return
-    try { const ctx = new AudioCtor(); const buf = await decodeBlob(src.blob, ctx); const bi = await detectBeats(buf); setBpm(bi.bpm); void ctx.close() }
+    try { const ctx = new AudioCtor(); const buf = await decodeBlob(src.blob, ctx); setMusicDur(buf.duration); const bi = await detectBeats(buf); setBpm(bi.bpm); void ctx.close() }
     catch { setBpm(undefined) }
   }
 
@@ -111,9 +114,10 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
     if (resultUrl.current) { URL.revokeObjectURL(resultUrl.current); resultUrl.current = null }
     setResult(null)
     try {
+      const maxSeconds = target === 'music' ? Math.min(170, Math.round(musicDur ?? 90)) : target
       const r = await renderVideo({
-        storyboard, photos, stats, music: { blob: music.blob, name: music.name }, budget, control: control.current,
-        onPhase: (ph, pr) => { setRenderPhase(ph); setRenderProg(pr) },
+        storyboard, photos, stats, music: { blob: music.blob, name: music.name }, budget, maxSeconds, control: control.current,
+        onPhase: (ph, pr, detail) => { setRenderPhase(ph); setRenderProg(pr); setRenderDetail(detail ?? '') },
       })
       resultUrl.current = r.url; setResult(r); setRenderState('done'); setRenderProg(1)
     } catch (e) {
@@ -170,6 +174,14 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
                 <input type="file" accept="audio/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) applyMusic(uploadedMusic(f)) }} />
               </label>
               <p className="muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>Standard ist „theme.mp3" (CC0). Die Schnitt-Dauern werden auf die erkannten Beats gerundet.</p>
+              <Label>Länge</Label>
+              <Chips>
+                <Chip active={target === 60} onClick={() => setTarget(60)}>60s</Chip>
+                <Chip active={target === 90} onClick={() => setTarget(90)}>90s</Chip>
+                <Chip active={target === 170} onClick={() => setTarget(170)}>2:50</Chip>
+                <Chip active={target === 'music'} onClick={() => setTarget('music')}>An Musik{musicDur ? ` (${Math.min(170, Math.round(musicDur))}s)` : ''}</Chip>
+              </Chips>
+              <p className="muted" style={{ fontSize: 11 }}>Lange Videos rendern am Desktop mehrere Minuten (Chunk-Encoding).</p>
             </>
           )}
 
@@ -236,7 +248,7 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
             const cap = renderCapability()
             const working = renderState === 'working'
             const videoEl = result && renderState === 'done' ? <video src={result.url} controls playsInline style={{ width: '100%', borderRadius: 12, marginBottom: 12, background: '#000' }} /> : null
-            const progressEl = working ? <Progress label={renderPhase === 'frames' ? 'Bilder aufbereiten' : 'Render (ffmpeg.wasm)'} value={renderProg} /> : null
+            const progressEl = working ? <Progress label={(renderPhase === 'frames' ? 'Bilder aufbereiten' : 'Render') + (renderDetail ? ` · ${renderDetail}` : '')} value={renderProg} /> : null
             if (cap.mobile) return (
               <>
                 <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Video-Render läuft am Desktop – hier kannst du kuratieren und in der Vorschau ansehen. Ein kurzer Versuch in niedriger Auflösung ist möglich.</p>

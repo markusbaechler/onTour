@@ -1,5 +1,3 @@
-import type { LatLng } from '../types'
-
 // Overlays/Titelkarten als PNG-Blobs im Browser-Canvas gezeichnet (volle Font-Qualitaet).
 // Die App-Fonts werden vor dem Zeichnen via document.fonts.ready sichergestellt.
 
@@ -70,35 +68,5 @@ export async function renderTitleCardPng(w: number, h: number, o: { title?: stri
   if (o.title) { ctx.fillStyle = SNOW; ctx.font = `700 ${Math.round(w * 0.08)}px ${DISP}`; ctx.fillText(clip(ctx, o.title, w - pad * 2), w / 2, y) }
   if (o.subtitle) { ctx.fillStyle = SNOW; ctx.font = `500 ${Math.round(w * 0.04)}px ${BODY}`; ctx.fillText(clip(ctx, o.subtitle, w - pad * 2), w / 2, y + Math.round(w * 0.07)) }
   if (o.stats) { ctx.fillStyle = GLACIER; ctx.font = `500 ${Math.round(w * 0.03)}px ${MONO}`; ctx.fillText(clip(ctx, o.stats, w - pad * 2), w / 2, y + Math.round(w * 0.13)) }
-  return toBlob(c)
-}
-
-/** Statisches Routen-Kapitelbild: Track fit-to-bounds, amber Linie, leuchtende Paesse + Label. */
-export async function renderRoutePng(w: number, h: number, track: LatLng[], passes: Array<{ lat: number; lng: number; name: string; altitude: number }>, label?: string): Promise<Blob> {
-  await ensureFonts()
-  const { c, ctx } = make(w, h)
-  ctx.fillStyle = INK; ctx.fillRect(0, 0, w, h)
-  if (track.length >= 2) {
-    const pad = w * 0.12
-    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
-    for (const [la, ln] of track) { minLat = Math.min(minLat, la); maxLat = Math.max(maxLat, la); minLng = Math.min(minLng, ln); maxLng = Math.max(maxLng, ln) }
-    const midLat = (minLat + maxLat) / 2, midLng = (minLng + maxLng) / 2
-    const kx = Math.cos((midLat * Math.PI) / 180)
-    const scale = Math.min((w - 2 * pad) / Math.max(1e-6, (maxLng - minLng) * kx), (h - 2 * pad) / Math.max(1e-6, maxLat - minLat))
-    const px = (la: number, ln: number): [number, number] => [w / 2 + (ln - midLng) * kx * scale, h / 2 - (la - midLat) * scale]
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-    ctx.beginPath()
-    track.forEach(([la, ln], i) => { const [x, y] = px(la, ln); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) })
-    ctx.strokeStyle = 'rgba(255,138,61,0.18)'; ctx.lineWidth = w * 0.02; ctx.stroke()
-    ctx.strokeStyle = SIGNAL; ctx.lineWidth = w * 0.006; ctx.stroke()
-    for (const p of passes) {
-      const [x, y] = px(p.lat, p.lng)
-      ctx.beginPath(); ctx.arc(x, y, w * 0.007, 0, Math.PI * 2); ctx.fillStyle = GLACIER; ctx.fill()
-      ctx.beginPath(); ctx.arc(x, y, w * 0.007, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(107,213,225,0.5)'; ctx.lineWidth = w * 0.008; ctx.stroke()
-      ctx.fillStyle = SNOW; ctx.font = `700 ${Math.round(w * 0.022)}px ${DISP}`; ctx.fillText(clip(ctx, p.name, w * 0.4), x + w * 0.014, y - w * 0.006)
-      ctx.fillStyle = GLACIER; ctx.font = `700 ${Math.round(w * 0.017)}px ${MONO}`; ctx.fillText(`${Math.round(p.altitude)} m`, x + w * 0.014, y + w * 0.02)
-    }
-  }
-  if (label) { ctx.textAlign = 'left'; ctx.fillStyle = SIGNAL; ctx.font = `700 ${Math.round(w * 0.03)}px ${DISP}`; ctx.fillText(label, w * 0.08, h * 0.1) }
   return toBlob(c)
 }
