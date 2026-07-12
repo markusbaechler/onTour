@@ -21,13 +21,15 @@ type ToBlobURL = (url: string, mimeType: string) => Promise<string>
 type FetchFile = (data: Blob) => Promise<Uint8Array>
 
 // Single-Thread-Core (KEIN core-mt) – braucht KEIN SharedArrayBuffer, laeuft auf GitHub Pages
-// ohne COOP/COEP. Zuerst SELBST gehostet (same-origin), sonst CDN-Fallbacks, alle gepinnt.
+// ohne COOP/COEP. WICHTIG: ESM-Variante (/dist/esm/), denn der (Vite-gebundelte) ffmpeg-Worker
+// laedt den Core per dynamischem import() – UMD scheitert dabei. Zuerst SELBST gehostet
+// (same-origin, ESM), sonst CDN-Fallbacks, alle exakt gepinnt.
 const CORE_VERSION = '0.12.10'
 function coreSources(base: string): Array<{ name: string; url: string }> {
   return [
     { name: 'self', url: `${base}ffmpeg/` },
-    { name: 'unpkg', url: `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/umd/` },
-    { name: 'jsdelivr', url: `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dist/umd/` },
+    { name: 'unpkg', url: `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/esm/` },
+    { name: 'jsdelivr', url: `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dist/esm/` },
   ]
 }
 const BUDGETS = { normal: { res: 720, fps: 20, maxSeconds: 60 }, low: { res: 540, fps: 20, maxSeconds: 30 } }
