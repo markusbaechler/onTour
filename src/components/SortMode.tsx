@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { trip } from '../data/trip'
 import { sortPhotos } from '../lib/photoOrder'
 import { toast } from '../lib/toast'
@@ -13,77 +13,52 @@ interface Props {
   onClose: () => void
 }
 
-const LONG_PRESS_MS = 300
-const MOVE_CANCEL = 8
-
-/** Sortier-/Korrektur-Modus: Tag aendern (Tap -> Chips) + Reihenfolge per Long-Press-Drag (orderKey). */
+// Sortier-/Korrektur-Modus: KEIN Drag&Drop (touch-untauglich). Stattdessen Tap-Insert:
+// 1. Foto antippen = auswaehlen. 2. Einfuege-Slot antippen = dorthin verschieben (inkl.
+// Etappenwechsel, wenn der Slot in einer anderen Etappe liegt). Scrollen bleibt normal.
 export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
   const byId = useMemo(() => new Map(photos.map((p) => [p.id, p])), [photos])
   const stages = useMemo(() => trip.stages.filter((s) => photos.some((p) => p.stageId === s.id)), [photos])
   const baseOrder = (sid: string) => sortPhotos(photos.filter((p) => p.stageId === sid)).map((p) => p.id)
 
-  const [drag, setDrag] = useState<{ sid: string; ids: string[]; activeId: string } | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tagFor, setTagFor] = useState<Photo | null>(null)
+  const selPhoto = selectedId ? byId.get(selectedId) ?? null : null
+  const dayOf = (sid: string) => trip.stages.find((s) => s.id === sid)?.day
 
-  const timer = useRef<number | null>(null)
-  const gesture = useRef<{ sid: string; id: string; x: number; y: number; moved: boolean; dragging: boolean } | null>(null)
-  const els = useRef<Map<string, HTMLElement>>(new Map())
-  const clearTimer = () => { if (timer.current) { window.clearTimeout(timer.current); timer.current = null } }
-
-  const orderIds = (sid: string) => (drag && drag.sid === sid ? drag.ids : baseOrder(sid))
-
-  function onPointerDown(sid: string, id: string, e: React.PointerEvent) {
-    if (e.button != null && e.button !== 0) return
-    gesture.current = { sid, id, x: e.clientX, y: e.clientY, moved: false, dragging: false }
-    const pid = e.pointerId
-    const el = e.currentTarget as HTMLElement
-    clearTimer()
-    timer.current = window.setTimeout(() => {
-      if (!gesture.current || gesture.current.moved) return
-      gesture.current.dragging = true
-      try { el.setPointerCapture(pid) } catch { /* ignore */ }
-      navigator.vibrate?.(10)
-      setDrag({ sid, ids: baseOrder(sid), activeId: id })
-    }, LONG_PRESS_MS)
-  }
-
-  function onPointerMove(e: React.PointerEvent) {
-    const g = gesture.current; if (!g) return
-    if (!g.dragging) {
-      if (Math.abs(e.clientX - g.x) > MOVE_CANCEL || Math.abs(e.clientY - g.y) > MOVE_CANCEL) { g.moved = true; clearTimer() }
-      return
-    }
-    e.preventDefault()
-    setDrag((d) => {
-      if (!d) return d
-      const y = e.clientY
-      let target = d.ids.indexOf(d.activeId)
-      for (let i = 0; i < d.ids.length; i++) {
-        const el = els.current.get(d.ids[i]); if (!el) continue
-        const r = el.getBoundingClientRect()
-        if (y < r.top + r.height / 2) { target = i; break }
-        target = i
-      }
-      const cur = d.ids.indexOf(d.activeId)
-      if (target === cur || target < 0) return d
-      const next = [...d.ids]; next.splice(cur, 1); next.splice(target, 0, d.activeId)
-      return { ...d, ids: next }
+  /** Foto in Ziel-Etappe an Position einfuegen; orderKey der Ziel-Etappe fortlaufend neu schreiben. */
+  function movePhoto(photoId: string, targetStageId: string, insertAt: number) {
+    const p = byId.get(photoId); if (!p) return
+    const cross = p.stageId !== targetStageId
+    const next = baseOrder(targetStageId).filter((id) => id !== photoId)
+    next.splice(Math.max(0, Math.min(insertAt, next.length)), 0, photoId)
+    next.forEach((id, k) => {
+      const key = (k + 1) * 10, q = byId.get(id); if (!q) return
+      if (id === photoId) { const patch: PhotoPatch = { orderKey: key }; if (cross) patch.stageId = targetStageId; onUpdatePhoto(id, patch) }
+      else if (q.orderKey !== key) onUpdatePhoto(id, { orderKey: key })
     })
+    toast.success(`Nach T${dayOf(targetStageId)} verschoben`)
+    setSelectedId(null); setTagFor(null)
   }
 
-  function onPointerUp() {
-    clearTimer()
-    const g = gesture.current
-    if (g?.dragging && drag && drag.sid === g.sid) commitOrder(drag.sid, drag.ids)
-    else if (g && !g.moved) { const p = byId.get(g.id); if (p) setTagFor(p) }
-    gesture.current = null
-    setDrag(null)
+  /** Tap auf einen Einfuege-Slot vor Anzeige-Index `slotIndex` der Etappe `sid`. */
+  function onSlot(sid: string, slotIndex: number) {
+    if (!selectedId) return
+    const sel = byId.get(selectedId); if (!sel) return
+    let insertAt = slotIndex
+    if (sel.stageId === sid) {
+      const disp = baseOrder(sid), selIdx = disp.indexOf(selectedId)
+      if (slotIndex === selIdx || slotIndex === selIdx + 1) { setSelectedId(null); return } // gleiche Stelle -> nur abwaehlen
+      if (slotIndex > selIdx) insertAt = slotIndex - 1
+    }
+    movePhoto(selectedId, sid, insertAt)
   }
 
-  function commitOrder(_sid: string, ids: string[]) {
-    let changed = 0
-    ids.forEach((id, i) => { const key = (i + 1) * 10; const p = byId.get(id); if (p && p.orderKey !== key) { onUpdatePhoto(id, { orderKey: key }); changed++ } })
-    if (changed) toast.success('Reihenfolge gespeichert')
+  /** Slots direkt vor/nach dem gewaehlten Foto (eigene Etappe) sind No-Ops -> ausblenden. */
+  function slotVisible(sid: string, idx: number): boolean {
+    if (!selectedId) return false
+    if (selPhoto?.stageId === sid) { const disp = baseOrder(sid), si = disp.indexOf(selectedId); if (idx === si || idx === si + 1) return false }
+    return true
   }
 
   function resetOrder(sid: string) {
@@ -92,24 +67,30 @@ export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
     toast.info(n ? 'Reihenfolge zurückgesetzt (nach Aufnahmezeit)' : 'Bereits nach Aufnahmezeit sortiert')
   }
 
-  function changeStage(p: Photo, sid: string) {
-    if (sid !== p.stageId) { onUpdatePhoto(p.id, { stageId: sid, orderKey: null }); toast.success(`Verschoben nach T${trip.stages.find((s) => s.id === sid)?.day}`) }
-    setTagFor(null)
-  }
+  const Slot = ({ sid, idx }: { sid: string; idx: number }) =>
+    slotVisible(sid, idx) ? <button onClick={() => onSlot(sid, idx)} aria-label="Hierhin verschieben" style={slotStyle} /> : null
 
   return (
     <div style={overlay}>
       <div style={topbar}>
         <div>
           <span className="eyebrow">Sortieren</span>
-          <div style={{ fontSize: 13, color: 'var(--mist)', marginTop: 2 }}>Tippen = Tag ändern · Halten & ziehen = Reihenfolge</div>
+          <div style={{ fontSize: 13, color: 'var(--mist)', marginTop: 2 }}>Foto tippen · dann auf eine Lücke tippen</div>
         </div>
         <button className="btn" onClick={onClose} style={{ flexShrink: 0 }}><IcCheck size={17} /> Fertig</button>
       </div>
 
+      {selPhoto && (
+        <div style={banner}>
+          <img src={selPhoto.thumbUrl} alt="" style={{ width: 30, height: 30, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13 }}>Foto ausgewählt – tippe auf eine Lücke</span>
+          <button onClick={() => setSelectedId(null)} aria-label="Auswahl aufheben" style={bannerX}><IcX size={18} /></button>
+        </div>
+      )}
+
       <div style={scroll}>
         {stages.map((s) => {
-          const ids = orderIds(s.id)
+          const ids = baseOrder(s.id)
           return (
             <section key={s.id} style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
@@ -118,26 +99,22 @@ export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
                 <button onClick={() => resetOrder(s.id)} className="pill" style={{ marginLeft: 'auto', cursor: 'pointer', flexShrink: 0, fontSize: 10 }}>↺ Reihenfolge</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Slot sid={s.id} idx={0} />
                 {ids.map((id, i) => {
                   const p = byId.get(id); if (!p) return null
-                  const active = drag?.sid === s.id && drag.activeId === id
+                  const active = selectedId === id
                   return (
-                    <div
-                      key={id}
-                      ref={(el) => { if (el) els.current.set(id, el); else els.current.delete(id) }}
-                      onPointerDown={(e) => onPointerDown(s.id, id, e)}
-                      onPointerMove={onPointerMove}
-                      onPointerUp={onPointerUp}
-                      onPointerCancel={onPointerUp}
-                      style={row(active)}
-                    >
-                      <span className="mono muted" style={{ fontSize: 11, width: 18, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
-                      <img src={p.thumbUrl} alt="" draggable={false} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0, background: 'var(--ink)', pointerEvents: 'none' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.caption || <span className="muted">ohne Titel</span>}</div>
-                        <div className="mono muted" style={{ fontSize: 11 }}>{p.author}{p.takenAt ? ` · ${fmt(p.takenAt)}` : p.orderKey != null ? ' · fixiert' : ''}</div>
+                    <div key={id}>
+                      <div onClick={() => setSelectedId((cur) => (cur === id ? null : id))} style={row(active)}>
+                        <span className="mono muted" style={{ fontSize: 11, width: 18, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+                        <img src={p.thumbUrl} alt="" draggable={false} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0, background: 'var(--ink)' }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.caption || <span className="muted">ohne Titel</span>}</div>
+                          <div className="mono muted" style={{ fontSize: 11 }}>{p.author}{p.takenAt ? ` · ${fmt(p.takenAt)}` : p.orderKey != null ? ' · fixiert' : ''}</div>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); setTagFor(p) }} className="pill" style={{ flexShrink: 0, cursor: 'pointer', fontSize: 10 }}>Tag ▾</button>
                       </div>
-                      <span aria-hidden style={{ color: 'var(--slate-strong)', fontSize: 18, flexShrink: 0, cursor: 'grab', lineHeight: 1 }}>⠿</span>
+                      <div style={{ marginTop: 6 }}><Slot sid={s.id} idx={i + 1} /></div>
                     </div>
                   )
                 })}
@@ -152,12 +129,12 @@ export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
           <div onClick={(e) => e.stopPropagation()} className="sheet-up" style={sheet}>
             <div style={handle} />
             <span className="eyebrow">Etappe ändern</span>
-            <div className="mono muted" style={{ fontSize: 12, margin: '6px 0 14px' }}>{tagFor.caption || 'Foto'} · {tagFor.author}</div>
+            <div className="mono muted" style={{ fontSize: 12, margin: '6px 0 14px' }}>{tagFor.caption || 'Foto'} · {tagFor.author} · ans Ende des Zieltags</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: '50vh', overflowY: 'auto' }}>
               {trip.stages.map((s) => {
                 const on = s.id === tagFor.stageId
                 return (
-                  <button key={s.id} onClick={() => changeStage(tagFor, s.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: on ? 'var(--signal)' : 'var(--ink-2)', color: on ? '#1a0e04' : 'var(--snow)', border: `0.5px solid ${on ? 'var(--signal)' : 'var(--slate)'}`, borderRadius: 999, padding: '8px 12px', fontSize: 13, fontWeight: on ? 700 : 400, cursor: 'pointer' }}>
+                  <button key={s.id} onClick={() => movePhoto(tagFor.id, s.id, Number.MAX_SAFE_INTEGER)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: on ? 'var(--signal)' : 'var(--ink-2)', color: on ? '#1a0e04' : 'var(--snow)', border: `0.5px solid ${on ? 'var(--signal)' : 'var(--slate)'}`, borderRadius: 999, padding: '8px 12px', fontSize: 13, fontWeight: on ? 700 : 400, cursor: 'pointer' }}>
                     <span className="mono" style={{ fontWeight: 700 }}>T{s.day}</span>
                     <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.from}→{s.to}</span>
                     <span className="mono" style={{ fontSize: 10, opacity: 0.7 }}>{stageDate(trip.startDate, s.day - 1)}</span>
@@ -181,16 +158,21 @@ function fmt(iso: string): string {
 
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 90, background: 'var(--ink)', display: 'flex', flexDirection: 'column' }
 const topbar: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 'calc(12px + env(safe-area-inset-top)) 16px 12px', borderBottom: '0.5px solid var(--slate)' }
+const banner: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'rgba(255,138,61,.12)', borderBottom: '0.5px solid var(--signal-dim)', color: 'var(--snow)' }
+const bannerX: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--snow)', display: 'flex', cursor: 'pointer', padding: 4, flexShrink: 0 }
 const scroll: React.CSSProperties = { flex: 1, overflowY: 'auto', padding: '16px 16px calc(24px + env(safe-area-inset-bottom))' }
 function row(active: boolean): React.CSSProperties {
   return {
     display: 'flex', alignItems: 'center', gap: 10, padding: 6,
-    background: active ? 'var(--ink-raised)' : 'var(--ink-2)',
-    border: `0.5px solid ${active ? 'var(--signal)' : 'var(--slate)'}`,
-    borderRadius: 10, touchAction: 'pan-y', userSelect: 'none',
-    boxShadow: active ? '0 8px 24px rgba(0,0,0,.5)' : 'none',
-    transform: active ? 'scale(1.02)' : 'none', transition: 'transform .1s, box-shadow .1s',
+    background: active ? 'rgba(255,138,61,.10)' : 'var(--ink-2)',
+    border: `${active ? 1.5 : 0.5}px solid ${active ? 'var(--signal)' : 'var(--slate)'}`,
+    borderRadius: 10, cursor: 'pointer', userSelect: 'none',
+    transform: active ? 'scale(1.02)' : 'none', transition: 'transform .1s',
   }
+}
+const slotStyle: React.CSSProperties = {
+  display: 'block', width: '100%', minHeight: 28, background: 'rgba(255,138,61,.06)',
+  border: '1.5px dashed var(--signal)', borderRadius: 8, cursor: 'pointer', padding: 0,
 }
 const sheetOverlay: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 92, background: 'rgba(8,7,10,.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
 const sheet: React.CSSProperties = { position: 'relative', width: '100%', maxWidth: 'var(--shell)', background: 'var(--ink-raised)', borderTop: '0.5px solid var(--slate)', borderRadius: '20px 20px 0 0', padding: '10px 18px calc(20px + env(safe-area-inset-bottom))' }
