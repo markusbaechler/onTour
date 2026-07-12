@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "node scripts/copy-ffmpeg.mjs",
     "preview": "vite preview",
     "gen-cues": "node scripts/gen-cues.mjs",
     "gen-passes": "node scripts/gen-passes.mjs"
@@ -22,6 +23,7 @@
     "web-audio-beat-detector": "^8.2.37"
   },
   "devDependencies": {
+    "@ffmpeg/core": "^0.12.10",
     "@types/leaflet": "^1.9.12",
     "@types/node": "^20.19.43",
     "@types/react": "^18.3.5",

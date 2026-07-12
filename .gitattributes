@@ -1,0 +1,5 @@
+# Selbst gehosteter ffmpeg-Core: als Binaer behandeln (kein CRLF/EOL-Umbau, kein Textdiff).
+# Liegt bewusst NICHT unter public/, damit der PWA-Precache die 32-MB-wasm nicht globt;
+# scripts/copy-ffmpeg.mjs kopiert beide Dateien als postbuild nach dist/ffmpeg/.
+ffmpeg-core/ffmpeg-core.js binary
+ffmpeg-core/ffmpeg-core.wasm binary
