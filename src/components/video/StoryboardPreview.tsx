@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flatten, type Storyboard } from '../../lib/storyboard'
 import { smartCropUrl } from '../../lib/cloudinaryCrop'
+import { TRACKS, trackUrl } from '../../lib/music'
 import { IcX, IcPlay } from '../Icons'
 import type { Photo } from '../../types'
 
@@ -8,21 +9,30 @@ interface Props {
   storyboard: Storyboard
   photos: Photo[]
   musicUrl?: string
+  musicLabel?: string
+  base?: string
   onClose: () => void
 }
 
 const KB_CLASS: Record<string, string> = { in: 'sbp-kb-in', out: 'sbp-kb-out', l: 'sbp-kb-l', r: 'sbp-kb-r' }
 
 /** DOM-Vorschau: echte <img>-Sequenz mit CSS-Ken-Burns + Caption/Titelkarten, synchron zu <audio>. */
-export function StoryboardPreview({ storyboard, photos, musicUrl, onClose }: Props) {
+export function StoryboardPreview({ storyboard, photos, musicUrl, musicLabel, base, onClose }: Props) {
   const items = useMemo(() => flatten(storyboard, photos), [storyboard, photos])
   const total = storyboard.totalSeconds
   const [t, setT] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [failed, setFailed] = useState<Set<string>>(new Set())
+  const [audioSrc, setAudioSrc] = useState(musicUrl)
+  const [trackIdx, setTrackIdx] = useState(-1) // -1 = uebergebener Track (musicLabel)
   const raf = useRef<number | null>(null)
   const start = useRef(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const curTrackLabel = trackIdx >= 0 ? TRACKS[trackIdx].label : (musicLabel ?? 'Musik')
+  const cycleTrack = () => { if (!base) return; const next = (trackIdx + 1) % TRACKS.length; setTrackIdx(next); setAudioSrc(trackUrl(base, TRACKS[next])) }
+  // Track gewechselt -> neue Quelle weiterspielen
+  useEffect(() => { if (playing) audioRef.current?.play().catch(() => {}) /* eslint-disable-next-line */ }, [audioSrc])
   const previewCrop = storyboard.aspect === '9:16' ? { w: 720, h: 1280 } : { w: 1280, h: 720 }
 
   useEffect(() => {
@@ -99,11 +109,16 @@ export function StoryboardPreview({ storyboard, photos, musicUrl, onClose }: Pro
           <button className="btn ghost" onClick={toggle} style={{ minHeight: 40 }}>
             <IcPlay size={16} /> {t >= total ? 'Nochmal' : playing ? 'Pause' : 'Play'}
           </button>
+          {base && (
+            <button onClick={cycleTrack} className="pill" style={{ background: 'var(--ink-2)', cursor: 'pointer' }} title="Track wechseln">
+              ♪ {curTrackLabel.length > 18 ? curTrackLabel.slice(0, 17) + '…' : curTrackLabel}
+            </button>
+          )}
           <span className="mono muted" style={{ fontSize: 12 }}>{t.toFixed(1)} / {total.toFixed(1)} s</span>
         </div>
       </div>
 
-      {musicUrl && <audio ref={audioRef} src={musicUrl} loop preload="auto" />}
+      {audioSrc && <audio ref={audioRef} src={audioSrc} loop preload="auto" />}
     </div>
   )
 }

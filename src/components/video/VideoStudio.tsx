@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { trip } from '../../data/trip'
 import { scorePhotos, type ScoreEntry } from '../../lib/photoScore'
 import { autoCaption, defaultSelection, generateStoryboard, rankStages } from '../../lib/storyboard'
-import { defaultMusic, decodeBlob, uploadedMusic, type MusicSource } from '../../lib/audio'
+import { fetchTrack, decodeBlob, uploadedMusic, type MusicSource } from '../../lib/audio'
+import { TRACKS, DEFAULT_TRACK } from '../../lib/music'
 import { detectBeats } from '../../lib/beats'
 import { renderVideo, renderCapability, type RenderResult } from '../../lib/render'
 import type { Aspect } from '../../lib/cloudinaryCrop'
@@ -53,8 +54,8 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
 
   const scopeStages = useMemo(() => (scope === 'all' ? stagesWithPhotos : stagesWithPhotos.filter((s) => s.id === scope)), [scope, stagesWithPhotos])
 
-  // Standard-Musik vorwaehlen
-  useEffect(() => { defaultMusic(base).then((m) => { if (m) applyMusic(m) }) /* eslint-disable-next-line */ }, [])
+  // Standard-Track (cannonball) vorwaehlen
+  useEffect(() => { fetchTrack(base, DEFAULT_TRACK).then((m) => { if (m) applyMusic(m) }) /* eslint-disable-next-line */ }, [])
 
   async function applyMusic(src: MusicSource) {
     setMusic(src); setBpm(undefined)
@@ -162,18 +163,21 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
           {step === 2 && (
             <>
               <Label>Musik</Label>
+              <Chips>
+                {TRACKS.map((tk) => <Chip key={tk.id} active={music?.label === tk.label} onClick={() => fetchTrack(base, tk).then((m) => m && applyMusic(m))}>{tk.label}</Chip>)}
+              </Chips>
               <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <IcFilm size={18} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{music?.name ?? 'lädt Standard-Track…'}</div>
-                  <div className="mono muted" style={{ fontSize: 11 }}>{bpm ? `${bpm} BPM erkannt` : 'BPM wird erkannt…'}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{music?.label ?? 'lädt Standard-Track…'}</div>
+                  <div className="mono muted" style={{ fontSize: 11 }}>{bpm ? `${bpm} BPM` : 'BPM…'}{musicDur ? ` · ${Math.round(musicDur)}s` : ''}</div>
                 </div>
               </div>
               <label className="btn ghost" style={{ width: '100%', fontSize: 13, cursor: 'pointer' }}>
-                Eigenen Track hochladen
+                Eigener Track (Upload)
                 <input type="file" accept="audio/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) applyMusic(uploadedMusic(f)) }} />
               </label>
-              <p className="muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>Standard ist „theme.mp3" (CC0). Die Schnitt-Dauern werden auf die erkannten Beats gerundet.</p>
+              <p className="muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>Standard: „bbz Cannonball (Instrumental)". Schnitt-Dauern werden auf die erkannten Beats gerundet.</p>
               <Label>Länge</Label>
               <Chips>
                 <Chip active={target === 60} onClick={() => setTarget(60)}>60s</Chip>
@@ -281,7 +285,7 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
         </div>
       </div>
 
-      {preview && storyboard && <StoryboardPreview storyboard={storyboard} photos={photos} musicUrl={music?.url} onClose={() => setPreview(false)} />}
+      {preview && storyboard && <StoryboardPreview storyboard={storyboard} photos={photos} musicUrl={music?.url} musicLabel={music?.label} base={base} onClose={() => setPreview(false)} />}
     </div>
   )
 }

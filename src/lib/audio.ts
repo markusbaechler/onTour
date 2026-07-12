@@ -1,26 +1,29 @@
-// Musikquelle fuers Video-Studio: Standard-Track (public/music/theme.mp3, CC0) oder Upload.
-// url = fuer das <audio>-Element (Vorschau), blob = fuers Export-ZIP.
+import { trackUrl, type TrackDef } from './music'
 
-export interface MusicSource { name: string; url: string; blob: Blob }
+// Musikquelle fuers Video-Studio / die Diashow: mitgelieferter Track (public/music/*) oder
+// Upload. url = fuer das <audio>-Element (Vorschau), blob = fuer den Render. name = Dateiname
+// (fuer die Endung im Render), label = Anzeigename.
 
-/** Laedt den mitgelieferten CC0-Standardtrack. null, wenn nicht vorhanden/erreichbar. */
-export async function defaultMusic(base: string): Promise<MusicSource | null> {
+export interface MusicSource { name: string; label: string; url: string; blob: Blob }
+
+/** Laedt einen der mitgelieferten Tracks. null, wenn nicht erreichbar. */
+export async function fetchTrack(base: string, t: TrackDef): Promise<MusicSource | null> {
   try {
-    const res = await fetch(`${base}music/theme.mp3`)
+    const res = await fetch(trackUrl(base, t))
     if (!res.ok) return null
     const blob = await res.blob()
-    return { name: 'theme.mp3', url: URL.createObjectURL(blob), blob }
+    return { name: t.file.split('/').pop() ?? 'track.mp3', label: t.label, url: URL.createObjectURL(blob), blob }
   } catch {
     return null
   }
 }
 
-/** Erzeugt eine Musikquelle aus einer hochgeladenen Datei. */
+/** Musikquelle aus einer hochgeladenen Datei. */
 export function uploadedMusic(file: File): MusicSource {
-  return { name: file.name, url: URL.createObjectURL(file), blob: file }
+  return { name: file.name, label: file.name, url: URL.createObjectURL(file), blob: file }
 }
 
-/** Dekodiert einen Musik-Blob zu einem AudioBuffer (fuer die BPM-Erkennung). */
+/** Dekodiert einen Musik-Blob zu einem AudioBuffer (fuer BPM/Dauer). */
 export async function decodeBlob(blob: Blob, ctx: AudioContext): Promise<AudioBuffer> {
   return ctx.decodeAudioData(await blob.arrayBuffer())
 }
