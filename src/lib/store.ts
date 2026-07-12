@@ -145,13 +145,24 @@ export function useStore() {
     apply({ ...d, photos: d.photos.filter((p) => p.id !== id) }, { op: 'removePhoto', id })
   }, [apply])
 
-  // Funktionales Update: mehrere updatePhoto-Aufrufe in einer Schleife (z. B. Sortier-Batch:
-  // ganze Etappe neu durchnummerieren) kompoundieren korrekt, statt sich gegenseitig zu
-  // ueberschreiben (dataRef aktualisiert erst beim Re-Render).
+  // Funktionales Update: mehrere updatePhoto-Aufrufe in einer Schleife kompoundieren korrekt,
+  // statt sich gegenseitig zu ueberschreiben (dataRef aktualisiert erst beim Re-Render).
   const updatePhoto = useCallback((id: string, patch: PhotoPatch) => {
     lastMutRef.current = Date.now()
     setData((prev) => ({ ...prev, photos: prev.photos.map((p) => (p.id === id ? applyPhotoPatch(p, patch) : p)) }))
     dispatch({ op: 'updatePhoto', id, patch })
+  }, [])
+
+  // Atomarer Batch: EINE lokale State-Aktualisierung fuer viele Fotos (z. B. Sortier-Insert /
+  // Tagwechsel: ganze Ziel-Etappe neu durchnummerieren). Jede Mutation setzt stageId UND
+  // orderKey gemeinsam -> kein Zwei-Schritt-Race. Aus dem freshen `prev` abgeleitet, nicht aus
+  // einem veralteten Render-Scope-Array. Jede Aenderung wird zusaetzlich als Op persistiert.
+  const updatePhotos = useCallback((updates: Array<{ id: string; patch: PhotoPatch }>) => {
+    if (updates.length === 0) return
+    lastMutRef.current = Date.now()
+    const patchById = new Map(updates.map((u) => [u.id, u.patch]))
+    setData((prev) => ({ ...prev, photos: prev.photos.map((p) => { const patch = patchById.get(p.id); return patch ? applyPhotoPatch(p, patch) : p }) }))
+    for (const u of updates) dispatch({ op: 'updatePhoto', id: u.id, patch: u.patch })
   }, [])
 
   const addComment = useCallback((c: Comment) => {
@@ -174,5 +185,5 @@ export function useStore() {
     dispatch({ op: 'setLocation', rider: loc.rider, lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed, heading: loc.heading })
   }, [])
 
-  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, updatePhoto, addComment, toggleReaction, setLocation }
+  return { ...data, live, loading, error, reload, upsertActual, addPhoto, addPhotoLocal, removePhoto, updatePhoto, updatePhotos, addComment, toggleReaction, setLocation }
 }

@@ -71,6 +71,14 @@ export async function sendOp(op: Op): Promise<void> {
     // Wirft bei Netz- oder HTTP-Fehler -> die Outbox kann erneut versuchen.
     const res = await fetch(API!, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(op) })
     if (!res.ok) throw new Error(`sendOp ${res.status}`)
+    // Apps Script liefert AUCH bei unbekannter/abgelehnter Operation HTTP 200 mit {ok:false}
+    // (z. B. wenn das Backend die 'updatePhoto'-Op noch nicht kennt). Das als Fehler behandeln,
+    // sonst verbucht die Outbox es still als "gesendet" und die Aenderung faellt beim Reload zurueck.
+    const text = await res.text()
+    if (text) {
+      try { const j = JSON.parse(text); if (j && j.ok === false) throw new Error(`sendOp abgelehnt: ${j.error || 'unbekannte Operation – Backend aktualisieren?'}`) }
+      catch (e) { if (!(e instanceof SyntaxError)) throw e /* kein JSON -> als ok werten */ }
+    }
     return
   }
   // Demo-Fallback: Operation lokal anwenden (spiegelt die Server-Merge-Logik)

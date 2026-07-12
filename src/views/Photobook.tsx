@@ -32,6 +32,7 @@ interface Props {
   onAddLocal: (p: Photo) => void
   onRemove: (id: string) => void
   onUpdatePhoto: (id: string, patch: PhotoPatch) => void
+  onUpdatePhotos: (updates: Array<{ id: string; patch: PhotoPatch }>) => void
   onAddComment: (c: Comment) => void
   onToggleReaction: (photoId: string, author: string, emoji: string) => void
   onChangeName: (name: string) => void
@@ -48,7 +49,7 @@ function tileClass(i: number): string {
 
 export function Photobook({
   photos, comments, reactions, stats, base, viewerName, loading, error, onRetry,
-  onAdd, onAddLocal, onRemove, onUpdatePhoto, onAddComment, onToggleReaction, onChangeName,
+  onAdd, onAddLocal, onRemove, onUpdatePhoto, onUpdatePhotos, onAddComment, onToggleReaction, onChangeName,
 }: Props) {
   const [storyStart, setStoryStart] = useState<string | null>(null)
   const [mode, setMode] = useState<'mosaic' | 'map'>('mosaic')
@@ -194,7 +195,7 @@ export function Photobook({
       {showVideo && <VideoStudio photos={photos} comments={comments} reactions={reactions} stats={stats} base={base} onClose={() => setShowVideo(false)} />}
       {slideshow && <Slideshow photos={slideshow.photos} title={slideshow.title} onClose={() => setSlideshow(null)} />}
       {showAssign && <AssignReview photos={photos} stats={stats} onUpdatePhoto={onUpdatePhoto} onClose={() => setShowAssign(false)} />}
-      {showSort && <SortMode photos={photos} onUpdatePhoto={onUpdatePhoto} onClose={() => setShowSort(false)} />}
+      {showSort && <SortMode photos={photos} onUpdatePhotos={onUpdatePhotos} onClose={() => setShowSort(false)} />}
     </div>
   )
 }

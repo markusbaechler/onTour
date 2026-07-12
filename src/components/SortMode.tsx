@@ -9,14 +9,14 @@ import type { Photo } from '../types'
 
 interface Props {
   photos: Photo[]
-  onUpdatePhoto: (id: string, patch: PhotoPatch) => void
+  onUpdatePhotos: (updates: Array<{ id: string; patch: PhotoPatch }>) => void
   onClose: () => void
 }
 
 // Sortier-/Korrektur-Modus: KEIN Drag&Drop (touch-untauglich). Stattdessen Tap-Insert:
 // 1. Foto antippen = auswaehlen. 2. Einfuege-Slot antippen = dorthin verschieben (inkl.
 // Etappenwechsel, wenn der Slot in einer anderen Etappe liegt). Scrollen bleibt normal.
-export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
+export function SortMode({ photos, onUpdatePhotos, onClose }: Props) {
   const byId = useMemo(() => new Map(photos.map((p) => [p.id, p])), [photos])
   const stages = useMemo(() => trip.stages.filter((s) => photos.some((p) => p.stageId === s.id)), [photos])
   const baseOrder = (sid: string) => sortPhotos(photos.filter((p) => p.stageId === sid)).map((p) => p.id)
@@ -26,17 +26,24 @@ export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
   const selPhoto = selectedId ? byId.get(selectedId) ?? null : null
   const dayOf = (sid: string) => trip.stages.find((s) => s.id === sid)?.day
 
-  /** Foto in Ziel-Etappe an Position einfuegen; orderKey der Ziel-Etappe fortlaufend neu schreiben. */
+  /**
+   * Foto in Ziel-Etappe an Position `insertAt` einfuegen. Baut die NEUE Zielliste (inkl. Moved-
+   * Foto) und schreibt jedem Foto der Etappe {stageId?, orderKey} in EINER atomaren Batch-
+   * Mutation. Der Etappenwechsel ist damit Teil derselben Mutation wie die Reihenfolge –
+   * kein Zwei-Schritt-Race. Quell-Etappe braucht keine Neuvergabe.
+   */
   function movePhoto(photoId: string, targetStageId: string, insertAt: number) {
     const p = byId.get(photoId); if (!p) return
     const cross = p.stageId !== targetStageId
     const next = baseOrder(targetStageId).filter((id) => id !== photoId)
     next.splice(Math.max(0, Math.min(insertAt, next.length)), 0, photoId)
+    const updates: Array<{ id: string; patch: PhotoPatch }> = []
     next.forEach((id, k) => {
       const key = (k + 1) * 10, q = byId.get(id); if (!q) return
-      if (id === photoId) { const patch: PhotoPatch = { orderKey: key }; if (cross) patch.stageId = targetStageId; onUpdatePhoto(id, patch) }
-      else if (q.orderKey !== key) onUpdatePhoto(id, { orderKey: key })
+      if (id === photoId) updates.push({ id, patch: cross ? { stageId: targetStageId, orderKey: key } : { orderKey: key } })
+      else if (q.orderKey !== key) updates.push({ id, patch: { orderKey: key } })
     })
+    onUpdatePhotos(updates)
     toast.success(`Nach T${dayOf(targetStageId)} verschoben`)
     setSelectedId(null); setTagFor(null)
   }
@@ -62,9 +69,9 @@ export function SortMode({ photos, onUpdatePhoto, onClose }: Props) {
   }
 
   function resetOrder(sid: string) {
-    let n = 0
-    for (const p of photos) if (p.stageId === sid && p.orderKey != null) { onUpdatePhoto(p.id, { orderKey: null }); n++ }
-    toast.info(n ? 'Reihenfolge zurückgesetzt (nach Aufnahmezeit)' : 'Bereits nach Aufnahmezeit sortiert')
+    const updates = photos.filter((p) => p.stageId === sid && p.orderKey != null).map((p) => ({ id: p.id, patch: { orderKey: null } as PhotoPatch }))
+    onUpdatePhotos(updates)
+    toast.info(updates.length ? 'Reihenfolge zurückgesetzt (nach Aufnahmezeit)' : 'Bereits nach Aufnahmezeit sortiert')
   }
 
   const Slot = ({ sid, idx }: { sid: string; idx: number }) =>
