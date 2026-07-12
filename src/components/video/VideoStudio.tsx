@@ -4,10 +4,10 @@ import { scorePhotos, type ScoreEntry } from '../../lib/photoScore'
 import { autoCaption, defaultSelection, generateStoryboard, rankStages } from '../../lib/storyboard'
 import { defaultMusic, decodeBlob, uploadedMusic, type MusicSource } from '../../lib/audio'
 import { detectBeats } from '../../lib/beats'
-import { exportCapcut } from '../../lib/capcutExport'
+import { renderVideo, canRenderVideo, type RenderResult } from '../../lib/render'
 import type { Aspect } from '../../lib/cloudinaryCrop'
 import { StoryboardPreview } from './StoryboardPreview'
-import { IcX, IcFilm, IcPlay, IcChevronRight } from '../Icons'
+import { IcX, IcFilm, IcPlay } from '../Icons'
 import type { StageStats } from '../../lib/passes'
 import type { Comment, Photo, Reaction } from '../../types'
 
@@ -37,9 +37,16 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   const [analyzeProg, setAnalyzeProg] = useState<number | null>(null)
   const [edit, setEdit] = useState<Record<string, EditItem[]>>({})
   const [preview, setPreview] = useState(false)
-  const [exportProg, setExportProg] = useState<number | null>(null)
+  const [renderState, setRenderState] = useState<'idle' | 'working' | 'done' | 'error'>('idle')
+  const [renderPhase, setRenderPhase] = useState<'frames' | 'render'>('frames')
+  const [renderProg, setRenderProg] = useState(0)
+  const [result, setResult] = useState<RenderResult | null>(null)
   const [error, setError] = useState('')
   const scoringRef = useRef(false)
+  const control = useRef<{ cancelled: boolean }>({ cancelled: false })
+  const resultUrl = useRef<string | null>(null)
+
+  useEffect(() => () => { control.current.cancelled = true; if (resultUrl.current) URL.revokeObjectURL(resultUrl.current) }, [])
 
   const scopeStages = useMemo(() => (scope === 'all' ? stagesWithPhotos : stagesWithPhotos.filter((s) => s.id === scope)), [scope, stagesWithPhotos])
 
@@ -97,12 +104,30 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   }
   function setCaption(sid: string, id: string, caption: string) { setEdit((e) => ({ ...e, [sid]: e[sid].map((i) => (i.id === id ? { ...i, caption } : i)) })) }
 
-  async function doExport() {
+  async function doRender() {
     if (!storyboard || !music) { setError('Musik fehlt.'); return }
-    setExportProg(0); setError('')
-    try { await exportCapcut({ storyboard, photos, stats, music, scope: scope === 'all' ? 'tour' : scope, onProgress: (d, t) => setExportProg(t ? d / t : 1) }) }
-    catch { setError('Export fehlgeschlagen.') }
-    finally { setExportProg(null) }
+    const chk = canRenderVideo()
+    if (!chk.ok) { setError(chk.reason ?? 'Render nicht möglich.'); return }
+    control.current = { cancelled: false }
+    setRenderState('working'); setRenderProg(0); setError('')
+    if (resultUrl.current) { URL.revokeObjectURL(resultUrl.current); resultUrl.current = null }
+    setResult(null)
+    try {
+      const r = await renderVideo({
+        storyboard, photos, stats, music: { blob: music.blob, name: music.name }, control: control.current,
+        onPhase: (ph, pr) => { setRenderPhase(ph); setRenderProg(pr) },
+      })
+      resultUrl.current = r.url; setResult(r); setRenderState('done'); setRenderProg(1)
+    } catch {
+      if (control.current.cancelled) { setRenderState('idle'); return }
+      setError('Render fehlgeschlagen – mit weniger Fotos oder am Desktop erneut versuchen.'); setRenderState('error')
+    }
+  }
+  function download() {
+    if (!result) return
+    const a = document.createElement('a')
+    a.href = result.url; a.download = `bbz-cannonball-${scope === 'all' ? 'tour' : scope}.${result.type}`
+    document.body.appendChild(a); a.click(); a.remove()
   }
 
   return (
@@ -209,18 +234,22 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
             </>
           )}
 
-          {step === 5 && (
-            <>
-              <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>
-                Export als CapCut-Paket (ZIP): sortierte Fotos, captions.srt, regie.txt, Musik und eine Anleitung.
-                In CapCut importieren, Beat-Sync „Automatisch", fertig.
-              </p>
-              {exportProg != null && <Progress label="Lade Fotos & packe ZIP" value={exportProg} />}
-              <button className="btn" style={{ width: '100%' }} disabled={exportProg != null || !music} onClick={doExport}>
-                <IcChevronRight size={18} /> {exportProg != null ? 'Exportiere…' : 'CapCut-Paket herunterladen'}
-              </button>
-            </>
-          )}
+          {step === 5 && (() => {
+            const chk = canRenderVideo()
+            const working = renderState === 'working'
+            if (!chk.ok) return <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{chk.reason} Vorschau und Kuratierung funktionieren hier trotzdem – der finale MP4-Render läuft am Desktop.</p>
+            return (
+              <>
+                <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Erzeugt ein 1080p-MP4 direkt im Browser – kostenlos via ffmpeg.wasm. Das kann ein bis mehrere Minuten dauern.</p>
+                {working && <Progress label={renderPhase === 'frames' ? 'Bilder & Overlays aufbereiten' : 'Render (ffmpeg.wasm)'} value={renderProg} />}
+                {result && renderState === 'done' && <video src={result.url} controls playsInline style={{ width: '100%', borderRadius: 12, marginBottom: 12, background: '#000' }} />}
+                <button className="btn" style={{ width: '100%' }} disabled={working || !music} onClick={result ? download : doRender}>
+                  <IcFilm size={18} /> {working ? 'Rendere…' : result ? `Herunterladen (.${result.type})` : 'MP4 erstellen'}
+                </button>
+                {result && renderState === 'done' && <button className="btn ghost" style={{ width: '100%', marginTop: 8 }} onClick={doRender}>Neu rendern</button>}
+              </>
+            )
+          })()}
 
           {error && <p style={{ color: 'var(--bad)', fontSize: 13, marginTop: 12 }}>{error}</p>}
         </div>

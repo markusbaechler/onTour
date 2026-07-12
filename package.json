@@ -12,7 +12,8 @@
     "gen-passes": "node scripts/gen-passes.mjs"
   },
   "dependencies": {
-    "jszip": "^3.10.1",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "leaflet": "^1.9.4",
     "leaflet-gesture-handling": "^1.2.2",
     "react": "^18.3.1",

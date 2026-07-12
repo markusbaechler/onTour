@@ -16,7 +16,7 @@ export interface TimelineItem {
   start: number; end: number
   kind: 'title' | 'photo'
   title?: string; subtitle?: string; stats?: string
-  photo?: Photo; caption?: string; day?: number; kenBurns?: KenBurns; overlayTitle?: boolean
+  photo?: Photo; caption?: string; day?: number; stageId?: string; kenBurns?: KenBurns; overlayTitle?: boolean
 }
 
 const KB: KenBurns[] = ['in', 'out', 'l', 'r']
@@ -137,11 +137,11 @@ export function flatten(sb: Storyboard, photos: Photo[]): TimelineItem[] {
     } else if (sc.kind === 'outro') {
       push(sc.titleSeconds ?? 2.4, { kind: 'title', title: sc.title, subtitle: sc.subtitle })
     } else {
-      push(sc.titleSeconds ?? 2.4, { kind: 'title', title: sc.title, subtitle: sc.subtitle, stats: sc.stats })
+      push(sc.titleSeconds ?? 2.4, { kind: 'title', title: sc.title, subtitle: sc.subtitle, stats: sc.stats, stageId: sc.stageId })
       for (const shot of sc.shots) {
         const p = byId.get(shot.photoId)
         if (!p) continue
-        push(shot.seconds, { kind: 'photo', photo: p, caption: shot.caption, day: dayOf(shot.photoId), kenBurns: shot.kenBurns })
+        push(shot.seconds, { kind: 'photo', photo: p, caption: shot.caption, day: dayOf(shot.photoId), stageId: p.stageId, kenBurns: shot.kenBurns })
       }
     }
   }
