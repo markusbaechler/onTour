@@ -6,7 +6,7 @@ import { StoryCircles, type StoryGroup } from '../components/StoryCircles'
 import { PhotoTimelineMap } from '../components/PhotoTimelineMap'
 import { BlurImage } from '../components/BlurImage'
 import { PhotobookBuilder } from '../components/PhotobookBuilder'
-import { VideoBuilder } from '../components/VideoBuilder'
+import { VideoStudio } from '../components/video/VideoStudio'
 import { IcCamera, IcBook, IcFilm } from '../components/Icons'
 import { cloudinaryReady } from '../lib/cloudinary'
 import { stageDate } from '../lib/format'
@@ -174,7 +174,7 @@ export function Photobook({
       )}
 
       {showBook && <PhotobookBuilder photos={photos} stats={stats} base={base} onClose={() => setShowBook(false)} />}
-      {showVideo && <VideoBuilder photos={photos} comments={comments} reactions={reactions} stats={stats} onClose={() => setShowVideo(false)} />}
+      {showVideo && <VideoStudio photos={photos} comments={comments} reactions={reactions} stats={stats} base={base} onClose={() => setShowVideo(false)} />}
     </div>
   )
 }
