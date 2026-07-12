@@ -4,7 +4,7 @@ import { scorePhotos, type ScoreEntry } from '../../lib/photoScore'
 import { autoCaption, defaultSelection, generateStoryboard, rankStages } from '../../lib/storyboard'
 import { defaultMusic, decodeBlob, uploadedMusic, type MusicSource } from '../../lib/audio'
 import { detectBeats } from '../../lib/beats'
-import { renderVideo, canRenderVideo, type RenderResult } from '../../lib/render'
+import { renderVideo, renderCapability, type RenderResult } from '../../lib/render'
 import type { Aspect } from '../../lib/cloudinaryCrop'
 import { StoryboardPreview } from './StoryboardPreview'
 import { IcX, IcFilm, IcPlay } from '../Icons'
@@ -104,23 +104,21 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
   }
   function setCaption(sid: string, id: string, caption: string) { setEdit((e) => ({ ...e, [sid]: e[sid].map((i) => (i.id === id ? { ...i, caption } : i)) })) }
 
-  async function doRender() {
+  async function doRender(budget: 'normal' | 'low' = 'normal') {
     if (!storyboard || !music) { setError('Musik fehlt.'); return }
-    const chk = canRenderVideo()
-    if (!chk.ok) { setError(chk.reason ?? 'Render nicht möglich.'); return }
     control.current = { cancelled: false }
     setRenderState('working'); setRenderProg(0); setError('')
     if (resultUrl.current) { URL.revokeObjectURL(resultUrl.current); resultUrl.current = null }
     setResult(null)
     try {
       const r = await renderVideo({
-        storyboard, photos, stats, music: { blob: music.blob, name: music.name }, control: control.current,
+        storyboard, photos, stats, music: { blob: music.blob, name: music.name }, budget, control: control.current,
         onPhase: (ph, pr) => { setRenderPhase(ph); setRenderProg(pr) },
       })
       resultUrl.current = r.url; setResult(r); setRenderState('done'); setRenderProg(1)
-    } catch {
+    } catch (e) {
       if (control.current.cancelled) { setRenderState('idle'); return }
-      setError('Render fehlgeschlagen – mit weniger Fotos oder am Desktop erneut versuchen.'); setRenderState('error')
+      setError((e as Error).message || 'Render fehlgeschlagen.'); setRenderState('error')
     }
   }
   function download() {
@@ -235,18 +233,29 @@ export function VideoStudio({ photos, comments, reactions, stats, base, onClose 
           )}
 
           {step === 5 && (() => {
-            const chk = canRenderVideo()
+            const cap = renderCapability()
             const working = renderState === 'working'
-            if (!chk.ok) return <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{chk.reason} Vorschau und Kuratierung funktionieren hier trotzdem – der finale MP4-Render läuft am Desktop.</p>
+            const videoEl = result && renderState === 'done' ? <video src={result.url} controls playsInline style={{ width: '100%', borderRadius: 12, marginBottom: 12, background: '#000' }} /> : null
+            const progressEl = working ? <Progress label={renderPhase === 'frames' ? 'Bilder aufbereiten' : 'Render (ffmpeg.wasm)'} value={renderProg} /> : null
+            if (cap.mobile) return (
+              <>
+                <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Video-Render läuft am Desktop – hier kannst du kuratieren und in der Vorschau ansehen. Ein kurzer Versuch in niedriger Auflösung ist möglich.</p>
+                {progressEl}{videoEl}
+                {result ? (
+                  <button className="btn" style={{ width: '100%' }} onClick={download}>Herunterladen (.{result.type})</button>
+                ) : (
+                  <button className="btn ghost" style={{ width: '100%' }} disabled={working || !music} onClick={() => doRender('low')}>Trotzdem versuchen (kurz · 540p)</button>
+                )}
+              </>
+            )
             return (
               <>
-                <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Erzeugt ein 1080p-MP4 direkt im Browser – kostenlos via ffmpeg.wasm. Das kann ein bis mehrere Minuten dauern.</p>
-                {working && <Progress label={renderPhase === 'frames' ? 'Bilder & Overlays aufbereiten' : 'Render (ffmpeg.wasm)'} value={renderProg} />}
-                {result && renderState === 'done' && <video src={result.url} controls playsInline style={{ width: '100%', borderRadius: 12, marginBottom: 12, background: '#000' }} />}
-                <button className="btn" style={{ width: '100%' }} disabled={working || !music} onClick={result ? download : doRender}>
+                <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Erzeugt ein MP4 direkt im Browser – kostenlos via ffmpeg.wasm (720p). Das kann ein bis mehrere Minuten dauern.</p>
+                {progressEl}{videoEl}
+                <button className="btn" style={{ width: '100%' }} disabled={working || !music} onClick={() => (result ? download() : doRender('normal'))}>
                   <IcFilm size={18} /> {working ? 'Rendere…' : result ? `Herunterladen (.${result.type})` : 'MP4 erstellen'}
                 </button>
-                {result && renderState === 'done' && <button className="btn ghost" style={{ width: '100%', marginTop: 8 }} onClick={doRender}>Neu rendern</button>}
+                {result && renderState === 'done' && <button className="btn ghost" style={{ width: '100%', marginTop: 8 }} onClick={() => doRender('normal')}>Neu rendern</button>}
               </>
             )
           })()}
