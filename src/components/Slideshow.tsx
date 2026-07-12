@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void
 }
 
-const PHOTO_SEC = 4, TITLE_SEC = 2, CROSS = 0.8
+const PHOTO_SEC = 2.5, TITLE_SEC = 1.5, CROSS = 0.5
 const KB = ['sbp-kb-in', 'sbp-kb-out', 'sbp-kb-l', 'sbp-kb-r']
 
 type Slide =
@@ -94,6 +94,11 @@ export function Slideshow({ photos, title, onClose }: Props) {
 
   const seekTo = (target: number) => { const c = Math.max(0, Math.min(total, target)); setT(c); startRef.current = performance.now() - c * 1000; setEnded(false) }
   const curIndex = Math.max(0, slides.findIndex((s) => t >= s.start && t < s.end))
+  // Bei 2.5s-Takt die naechsten ZWEI Fotos vorladen -> kein Crossfade auf ein ladendes Bild.
+  useEffect(() => {
+    let n = 0
+    for (let k = curIndex + 1; k < slides.length && n < 2; k++) { const s = slides[k]; if (s.type === 'photo') { const im = new Image(); im.src = s.photo.url; n++ } }
+  }, [curIndex, slides])
   const seek = (dir: -1 | 1) => { const i = curIndex; if (dir < 0) seekTo(slides[Math.max(0, i - 1)]?.start ?? 0); else seekTo(i + 1 < slides.length ? slides[i + 1].start : total) }
   const restart = () => { setEnded(false); seekTo(0); setPlaying(true); const a = audioRef.current; if (a) { a.volume = 0; void a.play().catch(() => {}); fadeTo(1, 800) } }
   const center = () => { if (ended) restart(); else setPlaying((v) => !v) }

@@ -329,10 +329,10 @@ input[type="file"] { display: none; }
 /* Video-Studio: DOM-Vorschau (echte Bilder, CSS-Ken-Burns) */
 .sbp-stage { position: relative; overflow: hidden; background: #000; border-radius: 14px; max-height: 74vh; max-width: 92vw; box-shadow: 0 10px 40px rgba(0,0,0,.5); filter: contrast(1.05) saturate(1.08); }
 .sbp-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation-timing-function: linear; animation-fill-mode: forwards; will-change: transform; }
-@keyframes sbpIn { from { transform: scale(1); } to { transform: scale(1.12); } }
-@keyframes sbpOut { from { transform: scale(1.12); } to { transform: scale(1); } }
-@keyframes sbpL { from { transform: scale(1.14) translateX(3%); } to { transform: scale(1.14) translateX(-3%); } }
-@keyframes sbpR { from { transform: scale(1.14) translateX(-3%); } to { transform: scale(1.14) translateX(3%); } }
+@keyframes sbpIn { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes sbpOut { from { transform: scale(1.08); } to { transform: scale(1); } }
+@keyframes sbpL { from { transform: scale(1.09) translateX(2%); } to { transform: scale(1.09) translateX(-2%); } }
+@keyframes sbpR { from { transform: scale(1.09) translateX(-2%); } to { transform: scale(1.09) translateX(2%); } }
 .sbp-kb-in { animation-name: sbpIn; }
 .sbp-kb-out { animation-name: sbpOut; }
 .sbp-kb-l { animation-name: sbpL; }
