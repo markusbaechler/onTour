@@ -72,8 +72,10 @@ async function selfTest(ff: FF, fetchFile: FetchFile): Promise<'mp4' | 'webm'> {
   cx.fillStyle = '#FF8A3D'; cx.fillRect(0, 0, 64, 64)
   const blob = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('toBlob'))), 'image/jpeg', 0.8))
   const bytes = await fetchFile(blob)
-  await ff.writeFile('t_00001.jpg', bytes)
-  await ff.writeFile('t_00002.jpg', bytes)
+  // ffmpeg.wasm TRANSFERIERT den Buffer -> je Schreibvorgang eine FRISCHE Kopie, sonst ist
+  // `bytes` beim zweiten writeFile detached.
+  await ff.writeFile('t_00001.jpg', new Uint8Array(bytes))
+  await ff.writeFile('t_00002.jpg', new Uint8Array(bytes))
   const cleanup = async () => { for (const f of ['t_00001.jpg', 't_00002.jpg', 'selftest.mp4', 'selftest.webm']) await ff.deleteFile(f).catch(() => {}) }
   try {
     await ff.exec(['-framerate', '2', '-i', 't_%05d.jpg', '-t', '1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultrafast', 'selftest.mp4'])
@@ -104,12 +106,14 @@ export async function renderVideo(opts: RenderOptions): Promise<RenderResult> {
       storyboard: opts.storyboard, photos: opts.photos, stats: opts.stats,
       w, h, fps: budget.fps, maxSeconds: budget.maxSeconds, control: opts.control,
       onProgress: (d, t) => opts.onPhase('frames', t ? d / t : 0),
-      writeFrame: async (name, blob) => { await ff.writeFile(name, await fetchFile(blob)) },
+      // Pro Frame frischer Buffer (fetchFile liest den Blob neu) + Kopie, da writeFile transferiert.
+      writeFrame: async (name, blob) => { await ff.writeFile(name, new Uint8Array(await fetchFile(blob))) },
     })
     if (opts.control?.cancelled) throw new Error('cancelled')
 
     const audioName = `audio.${(opts.music.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3'}`
-    await ff.writeFile(audioName, await fetchFile(opts.music.blob))
+    // Frische Kopie: der Musik-Blob wird bei erneutem Render (Retry) nochmal gelesen.
+    await ff.writeFile(audioName, new Uint8Array(await fetchFile(opts.music.blob)))
     const total = frameCount / fps
     const fade = Math.max(0, total - 2).toFixed(2)
     const enc = (vc: string, ac: string, ext: string, extra: string[]) =>
