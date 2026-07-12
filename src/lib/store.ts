@@ -145,10 +145,14 @@ export function useStore() {
     apply({ ...d, photos: d.photos.filter((p) => p.id !== id) }, { op: 'removePhoto', id })
   }, [apply])
 
+  // Funktionales Update: mehrere updatePhoto-Aufrufe in einer Schleife (z. B. Sortier-Batch:
+  // ganze Etappe neu durchnummerieren) kompoundieren korrekt, statt sich gegenseitig zu
+  // ueberschreiben (dataRef aktualisiert erst beim Re-Render).
   const updatePhoto = useCallback((id: string, patch: PhotoPatch) => {
-    const d = dataRef.current
-    apply({ ...d, photos: d.photos.map((p) => (p.id === id ? applyPhotoPatch(p, patch) : p)) }, { op: 'updatePhoto', id, patch })
-  }, [apply])
+    lastMutRef.current = Date.now()
+    setData((prev) => ({ ...prev, photos: prev.photos.map((p) => (p.id === id ? applyPhotoPatch(p, patch) : p)) }))
+    dispatch({ op: 'updatePhoto', id, patch })
+  }, [])
 
   const addComment = useCallback((c: Comment) => {
     apply({ ...dataRef.current, comments: [...dataRef.current.comments, c] }, { op: 'addComment', comment: c })
